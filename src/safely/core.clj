@@ -3,15 +3,15 @@
             [defun :refer [defun]]))
 
 ;;
-;; * exception protection
-;; * retry
-;; * backoff
-;; * randomisation
 ;; * messaging
 ;; * handlers
 ;;
 
 (def ^:dynamic *no-sleep* false)
+(def defaults {:max-retry 0
+               :attempt 0
+               :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
+
 
 
 (defun random
@@ -38,12 +38,17 @@
 
 
 (defun sleep
-  ([n]              (when-not *no-sleep*
-                      (try
-                        (Thread/sleep n)
-                        (catch Exception x#))))
-  ([:min a :max b]  (sleep (random :min a :max b)))
-  ([b :+/- v]       (sleep (random b :+/- v))))
+  ([n]
+   (when-not *no-sleep*
+     (try
+       (Thread/sleep n)
+       (catch Exception x#))))
+
+  ([:min a :max b]
+   (sleep (random :min a :max b)))
+
+  ([b :+/- v]
+   (sleep (random b :+/- v))))
 
 
 (defun sleeper
@@ -74,9 +79,9 @@
 
 (defn safely-fn
   [f & {:as spec}]
-  (let [defaults {:max-retry 0 :attempt 0 :retry-delay 1000}]
-    (loop [{:keys [message max-retry retry-delay attempt]
-            :as data} (merge defaults spec)]
+  (let [spec' (merge defaults spec)
+        delayer (apply sleeper (:retry-delay spec'))]
+    (loop [{:keys [message max-retry attempt] :as data} spec']
       (let [[result ex] (make-attempt f)]
         (cond
           ;; it ran successfully
@@ -90,12 +95,17 @@
           ;; retry
           :else
           (do
-            (sleep retry-delay)
-            (println data)
+            (delayer)
             (recur (update data :attempt inc))))))))
 
 
 (comment
-  (safely-fn (fn [] (/ 1 0) (println "done")) :max-retry 3)
+
+  (safely-fn
+   (fn []
+     (println "executing")
+     (/ 1 0)
+     )
+   :max-retry 3)
 
   )
