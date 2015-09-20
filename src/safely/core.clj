@@ -8,8 +8,9 @@
 ;;
 
 (def ^:dynamic *no-sleep* false)
-(def defaults {:max-retry 0
-               :attempt 0
+(def defaults {:attempt 0
+               :default ::undefined
+               :max-retry 0
                :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
 
 
@@ -66,7 +67,14 @@
    (let [sleep-times (atom (cons 0 (exponential-seq b m)))]
      (fn []
        (let [[t] (swap! sleep-times rest)]
+         (sleep t :+/- v)))))
+
+  ([:rand-cycle c :+/- v ]
+   (let [sleep-times (atom (cons 0 (cycle c)))]
+     (fn []
+       (let [[t] (swap! sleep-times rest)]
          (sleep t :+/- v))))))
+
 
 
 (defn- make-attempt [f]
@@ -81,15 +89,19 @@
   [f & {:as spec}]
   (let [spec' (merge defaults spec)
         delayer (apply sleeper (:retry-delay spec'))]
-    (loop [{:keys [message max-retry attempt] :as data} spec']
+    (loop [{:keys [message default max-retry attempt] :as data} spec']
       (let [[result ex] (make-attempt f)]
         (cond
           ;; it ran successfully
           (not= ::got-error result)
           result
 
+          ;; we reached the max retry but we have a default
+          (and (not= ::undefined default) (>= attempt max-retry))
+          default
+
           ;; we got error and reached the max retry
-          (>= attempt max-retry)
+          (and (= ::undefined default) (>= attempt max-retry))
           (throw (ex-info message data ex))
 
           ;; retry
@@ -106,6 +118,6 @@
      (println "executing")
      (/ 1 0)
      )
-   :max-retry 3)
+   :default 1)
 
   )
