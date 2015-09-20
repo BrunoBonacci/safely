@@ -8,10 +8,11 @@
 ;;
 
 (def ^:dynamic *no-sleep* false)
-(def defaults {:attempt 0
-               :default ::undefined
-               :max-retry 0
-               :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
+(def defaults
+  {:attempt 0
+   :default ::undefined
+   :max-retry 0
+   :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
 
 
 
@@ -19,6 +20,7 @@
   ([:min min :max max]  (+ min (rand-int (- max min))))
   ([base :+/- pct]      (let [variance (int (* base pct))]
                           (rand-between (- base variance) (+ base variance)))))
+
 
 
 (defn- exponential-seq
@@ -38,6 +40,7 @@
                    {:size size :factor factor :base base :step 1 :value base})))))
 
 
+
 (defun sleep
   ([n]
    (when-not *no-sleep*
@@ -50,6 +53,7 @@
 
   ([b :+/- v]
    (sleep (random b :+/- v))))
+
 
 
 (defun sleeper
@@ -85,6 +89,7 @@
       [::got-error x])))
 
 
+
 (defn safely-fn
   [f & {:as spec}]
   (let [spec' (merge defaults spec)
@@ -116,8 +121,7 @@
   (safely-fn
    (fn []
      (println "executing")
-     (/ 1 0)
-     )
+     (/ 1 0))
    :default 1)
 
   )
