@@ -35,7 +35,7 @@ keyword.
 This is the simplest of the policies. In case of an exception with the
 given code a default value will returned.
 
-```
+```Clojure
 (safely
  (/ 1 2)
 
