@@ -135,7 +135,7 @@
    :default 1)
 
   (safely
-   (println "executing")
+   ;; ArithmeticException Divide by zero
    (/ 1 0)
    :on-error
    :default 1)
