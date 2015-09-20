@@ -116,6 +116,16 @@
             (recur (update data :attempt inc))))))))
 
 
+
+(defmacro safely [& code]
+  (let [[body _ options] (partition-by #{:on-error} code)]
+    `(safely-fn
+      (fn []
+        ~@body)
+      ~@options)))
+
+
+
 (comment
 
   (safely-fn
@@ -124,4 +134,9 @@
      (/ 1 0))
    :default 1)
 
+  (safely
+   (println "executing")
+   (/ 1 0)
+   :on-error
+   :default 1)
   )
