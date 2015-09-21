@@ -7,7 +7,7 @@
 ;; * handlers
 ;;
 
-(def ^:dynamic *no-sleep* false)
+(def ^:dynamic *sleepless-mode* false)
 (def defaults
   {:attempt 0
    :default ::undefined
@@ -15,11 +15,16 @@
    :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
 
 
+(defn- apply-defaults [cfg defaults]
+  (let [config (merge defaults cfg)]
+    (as-> config $
+      (if (:ignore $) (assoc $ :default nil) $))))
+
 
 (defun random
   ([:min min :max max]  (+ min (rand-int (- max min))))
   ([base :+/- pct]      (let [variance (int (* base pct))]
-                          (rand-between (- base variance) (+ base variance)))))
+                          (random :min (- base variance) :max (+ base variance)))))
 
 
 
@@ -43,7 +48,7 @@
 
 (defun sleep
   ([n]
-   (when-not *no-sleep*
+   (when-not *sleepless-mode*
      (try
        (Thread/sleep n)
        (catch Exception x#))))
@@ -92,7 +97,7 @@
 
 (defn safely-fn
   [f & {:as spec}]
-  (let [spec' (merge defaults spec)
+  (let [spec' (apply-defaults spec defaults)
         delayer (apply sleeper (:retry-delay spec'))]
     (loop [{:keys [message default max-retry attempt] :as data} spec']
       (let [[result ex] (make-attempt f)]
