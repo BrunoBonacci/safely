@@ -16,9 +16,7 @@
 
 
 (defn- apply-defaults [cfg defaults]
-  (let [config (merge defaults cfg)]
-    (as-> config $
-      (if (:ignore $) (assoc $ :default nil) $))))
+  (merge defaults cfg))
 
 
 (defun random
