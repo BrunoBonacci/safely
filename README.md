@@ -201,6 +201,77 @@ effectively anything between 1500 millis (3000 - 50%) and 4500 millis
   :random 3000 :+/- 0.50)
 ```
 
+#### :random-exp-backoff
+
+In this example `safely` will retry for a maximum of 3 times with a
+exponential backoff delay of 3 seconds (3000 milliseconds) and plus or
+minus random 50% of the base amount. This means that the first retry
+will be ~3 sec (+/- random variation), the second retry will ~9 sec
+(+/- random variation) etc.
+
+```Clojure
+;; Automatic retry with random-range
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :max-retry 3
+  :random-exp-backoff :base  3000 :+/- 0.50)
+
+**The Math gotchas**
+The exponential backoff typically follows this formula:
+
+    delay = base-delay ^ retry-number +/- random-variation
+
+for a typical exponential back off for 3 sec would be:
+
+    retry:     1     2     3     4 ...
+    formula:  3^1   3^2   3^3   3^4
+    delay:     3     9    27     81 sec
+
+however the base amount is specified in milliseconds (not in seconds)
+which mathematically would be (this is not how `safely` implements the
+backoff):
+
+    retry:     1         2          3         4 ...
+    formula: 3000^1   3000^2      3^3       3^4
+    delay:   3000     9000000    27+E9     81+E12
+              3s     2.5 hours  +20 years
+             THIS IS NOT HOW SAFELY OPERATE
+
+Which means the second retry will be after *2.5 hours* and the third
+retry will be after *20 years*. I'm sure that none of your apps
+wants to wait 20 years before retrying, therefore `safely` despite
+requiring the time in milliseconds will try to adapt the exponential
+backoff based on the base number unit.
+
+So for example for a given base here you have the number of
+milliseconds of each subsequent retry:
+
+
+| Base | Retry 1 | Retry 2 | Retry 3 | Retry 4 | Retry 5 |
+|-----:|--------:|--------:|--------:|--------:|--------:|
+|   50 |      50 |     250 |    1250 |    6250 |   31250 |
+|  200 |     200 |     400 |     800 |    1600 |    3200 |
+| 2000 |    2000 |    4000 |    8000 |   16000 |   32000 |
+| 3000 |    3000 |    9000 |   27000 |   81000 |  243000 |
+
+
+The algorithm takes base and it compute the size of base (log10 base)
+and it strips down the least relevant digits before the power is
+applied.  This ensures that the exponential back off maintains
+practical timing while still increasing the delay of every retry.
+
+If you wish to check the sequence for a given base you can try on the
+REPL as follow:
+
+```Clojure
+(require 'safely.core)
+(take 10 (#'safely.core/exponential-seq 2000))
+;;=> (2000 4000 8000 16000 32000 64000 128000 256000 512000 1024000)
+```
+
+**The randomization is applied after the exponential value has been calculated**
+
 
 ## License
 
