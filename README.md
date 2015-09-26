@@ -274,11 +274,13 @@ REPL as follow:
 **The randomization is applied after the exponential value has been
   calculated**
 
+#### :random-exp-backoff (with :max)
+
 Additionally you can specify a maximum amount of time which beyond
 which you want to wait for a similar amount of time.
 
 ```Clojure
-;; Automatic retry with random-range
+;; Automatic retry with random-range with a max delay
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
@@ -302,6 +304,37 @@ Example for the effect of `:max 240000`
 (take 10 (#'safely.core/exponential-seq 3000 240000))
 ;;=> (3000 9000 27000 81000 240000 240000 240000 240000 240000 240000)
 ```
+
+#### :rand-cycle
+
+If you don't like the exponential backoff, then you can specify a
+sequence of expected delays between each retry. `safely` will use these
+times (in milliseconds) and add randomization to compute the amount of
+delay between each retry. Once last delay in the sequence is reached
+`safely` will cycle back to the first number and repeat the sequence.
+
+```Clojure
+;; Automatic retry with random list of delays
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :max-retry 6
+  :rand-cycle [1000 3000 5000 10000] :+/- 0.50)
+```
+
+In the above example I've specified the desired waiting time (with
+variation) of **1s, 3s, 5s and 10s**, I've also specified that I would
+like `safely` to retry **6 times**, but only 4 wait times were
+specified. Safely will cycle back from the beginning of the sequence
+producing effective waiting times of:
+
+    retry:     1     2     3     4      5     6
+    delay:   1000  3000  5000  10000  1000  3000
+             |---------------------|  |---------...
+       cycling back to the beginning of the sequence
+
+In this way you can specify your custom values which better suits
+your particular situation.
 
 ## License
 
