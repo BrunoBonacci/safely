@@ -371,8 +371,8 @@ This is the same example **but with the `safely-fn` instead**:
   :random-range :min 2000 :max 5000)
 ```
 
-*Note the use of the **thunk** to wrap the code and the absence of the
- `:on-error` keyword.*
+_Note the use of the **thunk** to wrap the code and the absence of the
+ `:on-error` keyword._
 
 ## TODO
 
