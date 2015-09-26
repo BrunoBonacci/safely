@@ -216,6 +216,7 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
   :on-error
   :max-retry 3
   :random-exp-backoff :base  3000 :+/- 0.50)
+```
 
 **The Math gotchas**
 The exponential backoff typically follows this formula:
