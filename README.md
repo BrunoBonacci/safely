@@ -218,8 +218,8 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
   :random-exp-backoff :base  3000 :+/- 0.50)
 ```
 
-**The Math gotchas**
-The exponential backoff typically follows this formula:
+**The Math gotchas:** The exponential backoff typically follows this
+formula:
 
     delay = base-delay ^ retry-number +/- random-variation
 
@@ -243,9 +243,9 @@ Which means the second retry will be after *2.5 hours* and the third
 retry will be after *20 years*. I'm sure that none of your apps
 wants to wait 20 years before retrying, therefore `safely` despite
 requiring the time in milliseconds will try to adapt the exponential
-backoff based on the base number unit.
+backoff base to scale of the number.
 
-So for example for a given base here you have the number of
+So for example for a given base you have the number of
 milliseconds of each subsequent retry:
 
 
@@ -271,8 +271,37 @@ REPL as follow:
 ;;=> (2000 4000 8000 16000 32000 64000 128000 256000 512000 1024000)
 ```
 
-**The randomization is applied after the exponential value has been calculated**
+**The randomization is applied after the exponential value has been
+  calculated**
 
+Additionally you can specify a maximum amount of time which beyond
+which you want to wait for a similar amount of time.
+
+```Clojure
+;; Automatic retry with random-range
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :max-retry 3
+  :random-exp-backoff :base  3000 :+/- 0.50 :max 240000)
+```
+
+The above example set a maximum delay of **4 minutes** (240000 millis)
+beyond which time `safely` won't backoff exponentially any more, but
+it will remain constant.
+
+Example for the effect of `:max 240000`
+
+```Clojure
+(require 'safely.core)
+;; without :max
+(take 10 (#'safely.core/exponential-seq 3000))
+;;=> (3000 9000 27000 81000 243000 729000 2187000 6561000 19683000 59049000)
+
+;; with :max 240000
+(take 10 (#'safely.core/exponential-seq 3000 240000))
+;;=> (3000 9000 27000 81000 240000 240000 240000 240000 240000 240000)
+```
 
 ## License
 
