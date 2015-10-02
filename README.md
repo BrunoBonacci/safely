@@ -419,7 +419,7 @@ _Note the use of the **thunk** to wrap the code and the absence of the
  `:on-error` keyword._
 
 
-### Testing and the `slepless-mode`
+### Testing and the `sleepless-mode`
 
 If you are writing automated test but you don't want to wait then
 you can enable the **sleepless-mode** in order to skip the waiting
