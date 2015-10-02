@@ -337,44 +337,6 @@ In this way you can specify your custom values which better suits
 your particular situation.
 
 
-### Macro vs function
-
-`safely` it's a Clojure macro which wraps your code with a try/catch and offers
-a elegant declarative approach to the error management. However in many cases
-macro can't be used easily for this reason we provide a function as well.
-
-Everything you can do with the macro `safely` you can do with the
-function `safely-fn` which takes a **thunk** (function with zero
-arguments and the same options with `safely` takes after the
-`:on-error` clause.
-
-So for example this is the use of the macro you have seen so far:
-
-```Clojure
-;; Automatic retry with random-range
-(safely
-  (http/get "http://user.service.local/users?active=true")
-  :on-error
-  :max-retry 3
-  :random-range :min 2000 :max 5000)
-```
-
-This is the same example **but with the `safely-fn` instead**:
-
-```Clojure
-;; Automatic retry with random-range
-(safely-fn
-  (fn []
-    (http/get "http://user.service.local/users?active=true"))
-
-  :max-retry 3
-  :random-range :min 2000 :max 5000)
-```
-
-_Note the use of the **thunk** to wrap the code and the absence of the
- `:on-error` keyword._
-
-
 ### Errors logging
 
 One common mistake is to have empty `catch` block. The exception in this case
@@ -418,6 +380,43 @@ In this case we disable the error logging for the given block.
   :log-errors false)
 ```
 
+
+### Macro vs function
+
+`safely` it's a Clojure macro which wraps your code with a try/catch and offers
+a elegant declarative approach to the error management. However in many cases
+macro can't be used easily for this reason we provide a function as well.
+
+Everything you can do with the macro `safely` you can do with the
+function `safely-fn` which takes a **thunk** (function with zero
+arguments and the same options with `safely` takes after the
+`:on-error` clause.
+
+So for example this is the use of the macro you have seen so far:
+
+```Clojure
+;; Automatic retry with random-range
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :max-retry 3
+  :random-range :min 2000 :max 5000)
+```
+
+This is the same example **but with the `safely-fn` instead**:
+
+```Clojure
+;; Automatic retry with random-range
+(safely-fn
+  (fn []
+    (http/get "http://user.service.local/users?active=true"))
+
+  :max-retry 3
+  :random-range :min 2000 :max 5000)
+```
+
+_Note the use of the **thunk** to wrap the code and the absence of the
+ `:on-error` keyword._
 
 ## TODO
 
