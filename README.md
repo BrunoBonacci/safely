@@ -436,7 +436,8 @@ This might wait up to 40s before returning "".
   :default "")
 ```
 
-This one does the same number of retries but doesn't sleep
+This one does the same number of retries but doesn't sleep and it
+returns immediately (same code path, but no sleep).
 
 ```Clojure
 ;; This one does the same number of retries but doesn't sleep
