@@ -374,9 +374,53 @@ This is the same example **but with the `safely-fn` instead**:
 _Note the use of the **thunk** to wrap the code and the absence of the
  `:on-error` keyword._
 
+
+### Errors logging
+
+One common mistake is to have empty `catch` block. The exception in this case
+it is swallowed by the program without leaving any trace. There are very few
+occasion when this is a good idea, in most of the cases it is recommended to
+at least log the exception in a logging system.
+`safely` by default logs the exception with `timbre`. There are a few configurable
+option which you can leverage to make message more suitable for your situation.
+
+We have:
+
+* `:message` to customize the log message and make it more meaningful
+  with information which pertain the action you were trying to
+  achieve.
+* `:log-level` the level to use while logging the exception. The
+  default value is `:warn`, other possible values are: `:trace`,
+  `:debug`, `:info`, `:warn`, `:error`, `:fatal`, `:report`
+* `:log-errors` (`true`|`false`) whether or not the error must be
+  logged. If you don't want to log exceptions in a particular block
+  you can disable it with: `:log-errors false`
+
+For example this log the exception with the given message and a log
+level of `:info`.
+
+```Clojure
+;; Customize logging
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :message "Error while fetching active users"
+  :log-level :info)
+```
+
+In this case we disable the error logging for the given block.
+
+```Clojure
+;; Disable logging
+(safely
+  (Thread/sleep 3000)
+  :on-error
+  :log-errors false)
+```
+
+
 ## TODO
 
-  * Add logging of exceptions
   * Add custom handlers support
   * Add automatic metrics counting for errors (rates, count)
 

@@ -1,17 +1,22 @@
 (ns safely.core
   (:require [clojure.core.match :refer [match]]
-            [defun :refer [defun]]))
+            [defun :refer [defun]]
+            [taoensso.timbre :as log]))
 
 ;;
-;; * messaging
+;; TODO:
 ;; * handlers
+;; * code doc
 ;;
 
 (def ^:dynamic *sleepless-mode* false)
 (def defaults
-  {:attempt 0
-   :default ::undefined
-   :max-retry 0
+  {:attempt     0
+   :default     ::undefined
+   :message     "Trapped expected error during safe block execution."
+   :log-errors  true
+   :log-level   :warn
+   :max-retry   0
    :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
 
 
@@ -84,11 +89,14 @@
 
 
 
-(defn- make-attempt [f]
+(defn- make-attempt
+  [{:keys [message log-errors log-level]}
+   f]
   (try
     [(f)]
     (catch Throwable x
-      (println "ERROR::" (.getMessage x))
+      (when log-errors
+        (log/log log-level x message))
       [::got-error x])))
 
 
@@ -98,7 +106,7 @@
   (let [spec' (apply-defaults spec defaults)
         delayer (apply sleeper (:retry-delay spec'))]
     (loop [{:keys [message default max-retry attempt] :as data} spec']
-      (let [[result ex] (make-attempt f)]
+      (let [[result ex] (make-attempt spec' f)]
         (cond
           ;; it ran successfully
           (not= ::got-error result)

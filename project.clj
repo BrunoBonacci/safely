@@ -10,6 +10,7 @@
   :dependencies [[org.clojure/clojure "1.7.0"]
                  [expectations "2.1.3"]
                  [org.clojure/core.match "0.3.0-alpha4"]
-                 [defun "0.2.0-RC"]]
+                 [defun "0.2.0-RC"]
+                 [com.taoensso/timbre "4.1.4"]]
 
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.8.2"]]}})
