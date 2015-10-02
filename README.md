@@ -3,11 +3,12 @@
 Safely it's a Clojure library for handling exception in code executions.
 The library offers out of the box:
 
-* declarative exception handling
-* automatic retry policies
-* randomized retries
-* attenuation of self-emergent behaviour is distributed systems
-
+  * declarative exception handling
+  * automatic retry policies
+  * randomized retries
+  * attenuation of self-emergent behaviour is distributed systems
+  * sleepless-mode for testing
+  * automatic and customizable logging of errors
 
 ## Usage
 
