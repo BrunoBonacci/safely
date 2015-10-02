@@ -418,6 +418,37 @@ This is the same example **but with the `safely-fn` instead**:
 _Note the use of the **thunk** to wrap the code and the absence of the
  `:on-error` keyword._
 
+
+### Testing and the `slepless-mode`
+
+If you are writing automated test but you don't want to wait then
+you can enable the **sleepless-mode** in order to skip the waiting
+times of the retry for example:
+
+This might wait up to 40s before returning "".
+
+```Clojure
+;; this might wait up to 40s before returning ""
+(safely
+  (slurp "/not/existing/file")
+  :on-error
+  :max-retry 3
+  :default "")
+```
+
+This one does the same number of retries but doesn't sleep
+
+```Clojure
+;; This one does the same number of retries but doesn't sleep
+(binding [*sleepless-mode* true]
+  (safely
+    (slurp "/not/existing/file")
+    :on-error
+    :max-retry 3
+    :default ""))
+```
+
+
 ## TODO
 
   * Add custom handlers support
