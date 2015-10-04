@@ -15,7 +15,7 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ```
-[com.brunobonacci/safely "0.1.0-SNAPSHOT"]
+[com.brunobonacci/safely "0.1.0"]
 ```
 
 Require the namespace:
