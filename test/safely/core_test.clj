@@ -68,8 +68,22 @@
           (boom)
           :on-error
           :max-retry 3
-          :default 1)
-         ))
+          :default 1)))
+
+
+;;
+;; using :max-retry to retry at most
+;; if recover from failure value should be returned
+;;
+(expect 2
+        (count-retry
+         (safely
+          (if (>= @*counter* 2)
+            10
+            (throw (RuntimeException. "boom")))
+          :on-error
+          :max-retry 3
+          :default 1)))
 
 
 
@@ -83,3 +97,15 @@
           :on-error
           :max-retry 3
           :default 10)))
+
+
+
+;;
+;; using :max-retry without :default raises an exception
+;;
+(expect clojure.lang.ExceptionInfo
+        (sleepless
+         (safely
+          (boom)
+          :on-error
+          :max-retry 3)))
