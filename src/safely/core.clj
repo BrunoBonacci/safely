@@ -129,11 +129,13 @@
 
 
 (defmacro safely [& code]
-  (let [[body _ options] (partition-by #{:on-error} code)]
-    `(safely-fn
-      (fn []
-        ~@body)
-      ~@options)))
+  (let [[body _ options :as seg] (partition-by #{:on-error} code)]
+    (if (not= 3 (count seg))
+      (throw (IllegalArgumentException. "Missing ':on-error' or invalid clause."))
+      `(safely-fn
+        (fn []
+          ~@body)
+        ~@options))))
 
 
 
