@@ -102,6 +102,66 @@
 
 
 (defn safely-fn
+"Safely offers a safe code execution against Exceptions.
+   It offers a declarative approach to a large number of handling strategies.
+   Usage:
+
+          (safely-fn
+             f
+             & handling-options)
+
+   The available handling options are:
+
+     :default <value>
+        will return <value> if the execution of <f> fails.
+
+     :max-retry <n>
+        will retry the code block in case of failures for a maximum
+        of <n>. Since this express the 're-tries' you should assume
+        the total number of attempts to be at most n + 1.
+        Used in conjunction with :default will retry first, and if
+        all attempts fails the default value will be returned instead.
+        The time between each retry is determined by one of the
+        following options, the default strategy is: `:random-exp-backoff'
+
+     :fix <millis> (not recommended)
+        To sleep a fix amount of time between retries.
+
+     :random-range :min <millis> :max <millis>
+        To sleep a random amount of time between retries within
+        certain a :min and :max time.
+
+     :random <millis> :+/- <pct>
+        To sleep a random amount of time <millis> each retry which
+        is randomized with a +/- <pct> of the base value.
+        Eg: `:random 5000 :+/- 0.35` will sleep 5s with +/- 35%
+
+     :random-exp-backoff :base <millis> :+/- <pct> [:max <millis>]
+        To sleep a random amount of time which will exponentially
+        grow between retries. (see documentation for more info)
+
+     :rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>
+        To sleep cycling the given list and randomizing by +/- <pct>.
+        On the first retry will wait <millis1> +/- <pct>, on the second
+        retry will wait <millis2> +/- <pct> as so on. If the :max-retry
+        exceeds the number of waiting time it will restart from <millis1>.
+
+
+   Exceptions are logged automatically. Here some options to control logging
+
+     :log-errors false
+        To disable logging
+
+     :log-level <level> (default :warn)
+        To log the errors with a given error level, available options:
+        :trace, :debug, :info, :warn, :error, :fatal, :report
+
+     :message \"a custom error message\"
+        To log the error with a custom message which helps to contextualize
+        the error message.
+
+  (see website for more documentation: https://github.com/BrunoBonacci/safely)
+  "
   [f & {:as spec}]
   (let [spec' (apply-defaults spec defaults)
         delayer (apply sleeper (:retry-delay spec'))]
@@ -128,7 +188,69 @@
 
 
 
-(defmacro safely [& code]
+(defmacro safely
+  "Safely offers a safe code execution against Exceptions.
+   It offers a declarative approach to a large number of handling strategies.
+   Usage:
+
+          (safely
+             & code
+             :on-error
+             & handling-options)
+
+   The available handling options are:
+
+     :default <value>
+        will return <value> if the execution of <code> fails.
+
+     :max-retry <n>
+        will retry the code block in case of failures for a maximum
+        of <n>. Since this express the 're-tries' you should assume
+        the total number of attempts to be at most n + 1.
+        Used in conjunction with :default will retry first, and if
+        all attempts fails the default value will be returned instead.
+        The time between each retry is determined by one of the
+        following options, the default strategy is: `:random-exp-backoff'
+
+     :fix <millis> (not recommended)
+        To sleep a fix amount of time between retries.
+
+     :random-range :min <millis> :max <millis>
+        To sleep a random amount of time between retries within
+        certain a :min and :max time.
+
+     :random <millis> :+/- <pct>
+        To sleep a random amount of time <millis> each retry which
+        is randomized with a +/- <pct> of the base value.
+        Eg: `:random 5000 :+/- 0.35` will sleep 5s with +/- 35%
+
+     :random-exp-backoff :base <millis> :+/- <pct> [:max <millis>]
+        To sleep a random amount of time which will exponentially
+        grow between retries. (see documentation for more info)
+
+     :rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>
+        To sleep cycling the given list and randomizing by +/- <pct>.
+        On the first retry will wait <millis1> +/- <pct>, on the second
+        retry will wait <millis2> +/- <pct> as so on. If the :max-retry
+        exceeds the number of waiting time it will restart from <millis1>.
+
+
+   Exceptions are logged automatically. Here some options to control logging
+
+     :log-errors false
+        To disable logging
+
+     :log-level <level> (default :warn)
+        To log the errors with a given error level, available options:
+        :trace, :debug, :info, :warn, :error, :fatal, :report
+
+     :message \"a custom error message\"
+        To log the error with a custom message which helps to contextualize
+        the error message.
+
+  (see website for more documentation: https://github.com/BrunoBonacci/safely)
+  "
+  [& code]
   (let [[body _ options :as seg] (partition-by #{:on-error} code)]
     (if (not= 3 (count seg))
       (throw (IllegalArgumentException. "Missing ':on-error' or invalid clause."))
@@ -136,20 +258,3 @@
         (fn []
           ~@body)
         ~@options))))
-
-
-
-(comment
-
-  (safely-fn
-   (fn []
-     (println "executing")
-     (/ 1 0))
-   :default 1)
-
-  (safely
-   ;; ArithmeticException Divide by zero
-   (/ 1 0)
-   :on-error
-   :default 1)
-  )
