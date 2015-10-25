@@ -102,7 +102,7 @@
 
 
 (defn safely-fn
-"Safely offers a safe code execution against Exceptions.
+  "Safely offers a safe code execution against Exceptions.
    It offers a declarative approach to a large number of handling strategies.
    Usage:
 
