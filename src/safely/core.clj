@@ -182,7 +182,7 @@
     (loop [{:keys [message default max-retry attempt track-as] :as data} spec']
       (let [[result ex] (make-attempt spec' f)]
         ;; track the rate/count of errors
-        (when (and (track-as (= ::got-error result)))
+        (when (and track-as (= ::got-error result))
           (track-rate track-as))
         ;; handle the outcome
         (cond
