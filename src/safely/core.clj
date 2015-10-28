@@ -1,7 +1,8 @@
 (ns safely.core
   (:require [clojure.core.match :refer [match]]
             [defun :refer [defun]]
-            [taoensso.timbre :as log]))
+            [taoensso.timbre :as log]
+            [samsara.trackit :refer [track-rate]]))
 
 ;;
 ;; TODO:
@@ -17,7 +18,8 @@
    :log-errors  true
    :log-level   :warn
    :max-retry   0
-   :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]})
+   :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]
+   :track-as    nil})
 
 
 (defn- apply-defaults [cfg defaults]
@@ -160,13 +162,29 @@
         To log the error with a custom message which helps to contextualize
         the error message.
 
+   It is possible to track the number or and the rate of error automatically
+   in your monitoring system of choice by just adding the name under which
+   you want to track this error. By default is not enabled.
+
+     :track-as \"myproject.errors.mymodule.myaction\"
+        Will use the given string as name for the metric. Use names which
+        will be clearly specifying the which part of your code is failing
+        for example: \"app.errors.db.writes\"
+        and \"app.errors.services.account.fetchuser\" clearly specify
+        which action if currently failing. The tracking is done via
+        Samsara/TrackIt! (see: https://github.com/samsara/trackit)
+
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
   [f & {:as spec}]
   (let [spec' (apply-defaults spec defaults)
         delayer (apply sleeper (:retry-delay spec'))]
-    (loop [{:keys [message default max-retry attempt] :as data} spec']
+    (loop [{:keys [message default max-retry attempt track-as] :as data} spec']
       (let [[result ex] (make-attempt spec' f)]
+        ;; track the rate/count of errors
+        (when (and (track-as (= ::got-error result)))
+          (track-rate track-as))
+        ;; handle the outcome
         (cond
           ;; it ran successfully
           (not= ::got-error result)
@@ -247,6 +265,18 @@
      :message \"a custom error message\"
         To log the error with a custom message which helps to contextualize
         the error message.
+
+   It is possible to track the number or and the rate of error automatically
+   in your monitoring system of choice by just adding the name under which
+   you want to track this error. By default is not enabled.
+
+     :track-as \"myproject.errors.mymodule.myaction\"
+        Will use the given string as name for the metric. Use names which
+        will be clearly specifying the which part of your code is failing
+        for example: \"app.errors.db.writes\"
+        and \"app.errors.services.account.fetchuser\" clearly specify
+        which action if currently failing. The tracking is done via
+        Samsara/TrackIt! (see: https://github.com/samsara/trackit)
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "

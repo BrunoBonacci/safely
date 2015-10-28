@@ -9,6 +9,7 @@ The library offers out of the box:
   * attenuation of self-emergent behaviour is distributed systems
   * sleepless-mode for testing
   * automatic and customizable logging of errors
+  * automatic tracking of errors rate/count in monitoring tools
 
 ## Usage
 
@@ -381,6 +382,38 @@ In this case we disable the error logging for the given block.
   :log-errors false)
 ```
 
+### Automatic errors tracking (monitoring)
+
+If you have (and you should) a monitoring system which track application
+metrics as well then you can track automatically how many times a
+particular section protected by safely is running into errors.
+
+To do so all you need to do is to give a name to the section you are
+protecting with safely with:
+
+* `:track-as` "myproject.errors.mymodule.myaction"
+  Will use the given string as name for the metric. Use names which
+  will be clearly specifying the which part of your code is failing
+  for example: "app.errors.db.writes" and
+  "app.errors.services.account.fetchuser" clearly specify which action
+  if currently failing. The tracking is done via Samsara/TrackIt!
+  (see: https://github.com/samsara/trackit)
+
+For example:
+```Clojure
+;; Automatic retry with random-range
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :max-retry 3
+  :random-range :min 2000 :max 5000
+  :track-as "myapp.errors.services.users.fetch-active")
+```
+
+This will track the number of failures of while fetching the active users,
+and will track the rate as well (how often it happens) which can be easily
+used as metric in a monitoring system.
+
 
 ### Macro vs function
 
@@ -454,7 +487,6 @@ returns immediately (same code path, but no sleep).
 ## TODO
 
   * Add custom handlers support
-  * Add automatic metrics counting for errors (rates, count)
 
 ## License
 
