@@ -1,5 +1,6 @@
-(defproject com.brunobonacci/safely "0.1.0"
-  :description "safely it's a Clojure library for exception handling and offers a elegant declarative approach to the error management."
+(defproject com.brunobonacci/safely "0.2.0"
+  :description "safely it's a Clojure library for exception handling
+  and offers a elegant declarative approach to the error management."
   :url "https://github.com/BrunoBonacci/safely"
 
   :license {:name "Apache License 2.0"
