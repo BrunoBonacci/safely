@@ -16,7 +16,7 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ```
-[com.brunobonacci/safely "0.1.0"]
+[com.brunobonacci/safely "0.2.0"]
 ```
 
 Require the namespace:
@@ -121,13 +121,20 @@ exact same amount of time. When the system comes back to life it will
 be flooded with retry requests from all the other services at the same
 time. If the number of client service is big enough can cause the
 service which is already struggling to die and reboot in a continuous
-cycle.  Netflix described a similar situation in their tech blog (link
-required), and they stress the importance of randomization in retry
-strategy.
+cycle.
+
+> "Emergent behavior is that which cannot be predicted through analysis
+> at any level simpler than that of the system as a whole. Emergent
+> behavior, by definition, is what’s left after everything else has been
+> explained" (Dyson and George 1997).
+
+> "Emergent behavior is also been defined as the action of simple rules
+> combining to produce complex results" (Rollings and Adams 2003)
 
 In this paper
 [Emergent Behavior in Systems of Systems]( http://faculty.nps.edu/thuynh/Conference%20Proceedings%20Papers/Paper_14_Emergent%20Behavior%20in%20Systems%20of%20Systems.pdf)
 you can see more examples of emergent behaviour.
+
 
 #### Retry policies
 

@@ -10,8 +10,9 @@
 ;; * code doc
 ;;
 
+
 (def ^:dynamic *sleepless-mode* false)
-(def defaults
+(def ^:const defaults
   {:attempt     0
    :default     ::undefined
    :message     "Trapped expected error during safe block execution."
@@ -24,6 +25,7 @@
 
 (defn- apply-defaults [cfg defaults]
   (merge defaults cfg))
+
 
 
 (defun random
@@ -283,7 +285,7 @@
   [& code]
   (let [[body _ options :as seg] (partition-by #{:on-error} code)]
     (if (not= 3 (count seg))
-      (throw (IllegalArgumentException. "Missing ':on-error' or invalid clause."))
+      (throw (IllegalArgumentException. "Missing or invalid ':on-error' clause."))
       `(safely-fn
         (fn []
           ~@body)
