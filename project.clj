@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "0.2.0"
+(defproject com.brunobonacci/safely "0.2.1"
   :description "safely it's a Clojure library for exception handling
   and offers a elegant declarative approach to the error management."
   :url "https://github.com/BrunoBonacci/safely"
@@ -13,6 +13,10 @@
                  [defun "0.2.0-RC"]
                  [com.taoensso/timbre "4.1.4"]
                  [samsara/trackit "0.2.2"]]
+
+  :global-vars {*warn-on-reflection* true}
+
+  :jvm-opts ["-server"]
 
   :profiles {:dev {:dependencies [[org.clojure/test.check "0.8.2"]
                                   [expectations "2.1.3"]]

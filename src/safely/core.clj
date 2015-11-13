@@ -38,7 +38,7 @@
 (defn- exponential-seq
   ([base max-value]
    (map #(min % max-value) (exponential-seq base)))
-  ([base]
+  ([^long base]
    (let [base   (Math/abs base)
          log10  (fn [n] (/ (Math/log n) (Math/log 10)))
          pow    (fn [b p] (apply *' (repeat p b)))
@@ -180,31 +180,34 @@
   "
   [f & {:as spec}]
   (let [spec' (apply-defaults spec defaults)
-        delayer (apply sleeper (:retry-delay spec'))]
+        ;; lazy execution as only needed in case of error
+        delayer (delay (apply sleeper (:retry-delay spec')))]
     (loop [{:keys [message default max-retry attempt track-as] :as data} spec']
       (let [[result ex] (make-attempt spec' f)]
-        ;; track the rate/count of errors
-        (when (and track-as (= ::got-error result))
-          (track-rate track-as))
-        ;; handle the outcome
-        (cond
+        ;; check execution outcome
+        (if (not= ::got-error result)
           ;; it ran successfully
-          (not= ::got-error result)
           result
-
-          ;; we reached the max retry but we have a default
-          (and (not= ::undefined default) (>= attempt max-retry))
-          default
-
-          ;; we got error and reached the max retry
-          (and (= ::undefined default) (>= attempt max-retry))
-          (throw (ex-info message data ex))
-
-          ;; retry
-          :else
+          ;; else: we have an error
           (do
-            (delayer)
-            (recur (update data :attempt inc))))))))
+            ;; track the rate/count of errors
+            (when (and track-as (= ::got-error result))
+              (track-rate track-as))
+            ;; handle the outcome
+            (cond
+              ;; we reached the max retry but we have a default
+              (and (not= ::undefined default) (>= attempt max-retry))
+              default
+
+              ;; we got error and reached the max retry
+              (and (= ::undefined default) (>= attempt max-retry))
+              (throw (ex-info message data ex))
+
+              ;; retry
+              :else
+              (do
+                (@delayer)
+                (recur (update data :attempt inc))))))))))
 
 
 
