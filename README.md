@@ -494,6 +494,10 @@ returns immediately (same code path, but no sleep).
 ```
 
 
+## Development
+
+CI status: [![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=svg)](https://circleci.com/gh/BrunoBonacci/safely)
+
 ## TODO
 
   * Add custom handlers support
