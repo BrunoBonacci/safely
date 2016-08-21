@@ -1,7 +1,7 @@
 (ns safely.core
   (:require [clojure.core.match :refer [match]]
             [defun :refer [defun]]
-            [taoensso.timbre :as log]
+            [clojure.tools.logging :as log]
             [samsara.trackit :refer [track-rate]]))
 
 ;;
