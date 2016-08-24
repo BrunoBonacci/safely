@@ -5,7 +5,7 @@ The library offers out of the box:
 
   * declarative exception handling
   * automatic retry policies
-  * randomized retries
+  * randomized delays retries
   * attenuation of self-emergent behaviour is distributed systems
   * sleepless-mode for testing
   * automatic and customizable logging of errors
