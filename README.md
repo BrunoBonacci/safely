@@ -16,7 +16,7 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ```
-[com.brunobonacci/safely "0.2.2"]
+[com.brunobonacci/safely "0.2.3"]
 ```
 
 Current version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
