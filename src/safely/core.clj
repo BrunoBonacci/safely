@@ -128,23 +128,24 @@
         The time between each retry is determined by one of the
         following options, the default strategy is: `:random-exp-backoff'
 
-     :fix <millis> (not recommended)
+     :retry-delay [:fix <millis>] (not recommended)
         To sleep a fix amount of time between retries.
 
-     :random-range :min <millis> :max <millis>
+     :retry-delay [:random-range :min <millis> :max <millis>]
         To sleep a random amount of time between retries within
         certain a :min and :max time.
 
-     :random <millis> :+/- <pct>
+     :retry-delay [:random <millis> :+/- <pct>]
         To sleep a random amount of time <millis> each retry which
         is randomized with a +/- <pct> of the base value.
         Eg: `:random 5000 :+/- 0.35` will sleep 5s with +/- 35%
 
-     :random-exp-backoff :base <millis> :+/- <pct> [:max <millis>]
+     :retry-delay [:random-exp-backoff :base <millis> :+/- <pct>]
+     :retry-delay [:random-exp-backoff :base <millis> :+/- <pct> :max <millis>]
         To sleep a random amount of time which will exponentially
         grow between retries. (see documentation for more info)
 
-     :rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>
+     :retry-delay [:rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>]
         To sleep cycling the given list and randomizing by +/- <pct>.
         On the first retry will wait <millis1> +/- <pct>, on the second
         retry will wait <millis2> +/- <pct> as so on. If the :max-retry
@@ -235,23 +236,24 @@
         The time between each retry is determined by one of the
         following options, the default strategy is: `:random-exp-backoff'
 
-     :fix <millis> (not recommended)
+     :retry-delay [:fix <millis>] (not recommended)
         To sleep a fix amount of time between retries.
 
-     :random-range :min <millis> :max <millis>
+     :retry-delay [:random-range :min <millis> :max <millis>]
         To sleep a random amount of time between retries within
         certain a :min and :max time.
 
-     :random <millis> :+/- <pct>
+     :retry-delay [:random <millis> :+/- <pct>]
         To sleep a random amount of time <millis> each retry which
         is randomized with a +/- <pct> of the base value.
         Eg: `:random 5000 :+/- 0.35` will sleep 5s with +/- 35%
 
-     :random-exp-backoff :base <millis> :+/- <pct> [:max <millis>]
+     :retry-delay [:random-exp-backoff :base <millis> :+/- <pct>]
+     :retry-delay [:random-exp-backoff :base <millis> :+/- <pct> :max <millis>]
         To sleep a random amount of time which will exponentially
         grow between retries. (see documentation for more info)
 
-     :rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>
+     :retry-delay [:rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>]
         To sleep cycling the given list and randomizing by +/- <pct>.
         On the first retry will wait <millis1> +/- <pct>, on the second
         retry will wait <millis2> +/- <pct> as so on. If the :max-retry

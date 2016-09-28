@@ -178,7 +178,7 @@ strongly discouraged in order to minimize self emergent behaviour.
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :fix 3000)
+  :retry-delay [:fix 3000])
 ```
 
 #### :random-range
@@ -193,7 +193,7 @@ seconds (5000 milliseconds).
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random-range :min 2000 :max 5000)
+  :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
 #### :random
@@ -210,7 +210,7 @@ effectively anything between 1500 millis (3000 - 50%) and 4500 millis
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random 3000 :+/- 0.50)
+  :retry-delay [:random 3000 :+/- 0.50])
 ```
 
 #### :random-exp-backoff
@@ -227,7 +227,7 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random-exp-backoff :base  3000 :+/- 0.50)
+  :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50])
 ```
 
 **The Math gotchas:** The exponential backoff typically follows this
@@ -297,7 +297,7 @@ which you want to wait for a similar amount of time.
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random-exp-backoff :base  3000 :+/- 0.50 :max 240000)
+  :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50 :max 240000])
 ```
 
 The above example set a maximum delay of **4 minutes** (240000 millis)
@@ -331,7 +331,7 @@ delay between each retry. Once last delay in the sequence is reached
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 6
-  :rand-cycle [1000 3000 5000 10000] :+/- 0.50)
+  :retry-delay [:rand-cycle [1000 3000 5000 10000] :+/- 0.50])
 ```
 
 In the above example I've specified the desired waiting time (with
@@ -416,7 +416,7 @@ For example:
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random-range :min 2000 :max 5000
+  :retry-delay [:random-range :min 2000 :max 5000]
   :track-as "myapp.errors.services.users.fetch-active")
 ```
 
@@ -444,7 +444,7 @@ So for example this is the use of the macro you have seen so far:
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retry 3
-  :random-range :min 2000 :max 5000)
+  :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
 This is the same example **but with the `safely-fn` instead**:
@@ -456,7 +456,7 @@ This is the same example **but with the `safely-fn` instead**:
     (http/get "http://user.service.local/users?active=true"))
 
   :max-retry 3
-  :random-range :min 2000 :max 5000)
+  :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
 _Note the use of the **thunk** to wrap the code and the absence of the
