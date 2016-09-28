@@ -15,7 +15,7 @@ The library offers out of the box:
 
 Add the dependency into your `project.clj`.
 
-```
+``` clojure
 [com.brunobonacci/safely "0.2.3"]
 ```
 
@@ -24,10 +24,66 @@ Current version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/sa
 
 Require the namespace:
 
-```
+``` clojure
 (ns foo.bar
   (:require [safely.core :refer [safely]]))
 ```
+
+Overall syntax
+
+``` clojure
+
+;;
+;; all in one example
+;;
+
+(safely
+
+ ;; code to execute
+ (do (comment something))
+
+ ;; exception handling
+ :on-error
+
+ ;; upon error return a default value
+ :default "some value"
+
+ ;; retry a number of times before
+ ;; to give up or return the default value
+ :max-retry 5
+
+ ;; between retries wait a fix amount of time (not recommended)
+ :retry-delay [:fix 3000] ;; 3s in millis
+
+ ;; or wait a uniform random range between :min and :max
+ :retry-delay [:random-range :min 1000 :max 3000]
+
+ ;; or wait a random amount of time with +/- a random variation
+ :retry-delay [:random 3000 :+/- 0.35]
+
+ ;; or wait an exponential amount of time with a random variation
+ :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50] ;; default
+ :retry-delay [:random-exp-backoff :base 3000 :+/- 0.35 :max 25000]
+
+ ;; or wait a given list of times with a random variation
+ :retry-delay [:rand-cycle [50 100 250 700 1250 2500] :+/- 0.50]
+
+ ;; set to false if you don't want to log errors
+ :log-errors false
+
+ ;; or choose the logging level
+ :log-level :warn
+
+ ;; customize your error message for logs
+ :message "a custom error message"
+
+ ;; and track the number of failure with the given metrics name
+ :track-as "myproject.errors.mymodule.myaction"
+
+ )
+
+```
+
 
 ## Exception handling
 
