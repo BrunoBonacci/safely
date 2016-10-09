@@ -330,6 +330,11 @@ and it strips down the least relevant digits before the power is
 applied.  This ensures that the exponential back off maintains
 practical timing while still increasing the delay of every retry.
 
+The following formula explains better how it works :
+
+![formula](/doc/images/retry-formula.png)
+
+
 If you wish to check the sequence for a given base you can try on the
 REPL as follow:
 
