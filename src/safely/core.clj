@@ -23,8 +23,10 @@
    :track-as    nil})
 
 
+
 (defn- apply-defaults [cfg defaults]
-  (merge defaults cfg))
+  (-> (merge defaults cfg)
+      (update :max-retry (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
 
 
@@ -119,16 +121,17 @@
      :default <value>
         will return <value> if the execution of <f> fails.
 
-     :max-retry <n>
+     :max-retry <n> or :forever
         will retry the code block in case of failures for a maximum
-        of <n>. Since this express the 're-tries' you should assume
+        of <n> times. Since this express the 're-tries' you should assume
         the total number of attempts to be at most n + 1.
+        When set to :forever it will retry indefinitely.
         Used in conjunction with :default will retry first, and if
         all attempts fails the default value will be returned instead.
         The time between each retry is determined by one of the
         following options, the default strategy is: `:random-exp-backoff'
 
-     :retry-delay [:fix <millis>] (not recommended)
+     :retry-delay [:fix <millis>] (NOT RECOMMENDED)
         To sleep a fix amount of time between retries.
 
      :retry-delay [:random-range :min <millis> :max <millis>]
@@ -227,16 +230,17 @@
      :default <value>
         will return <value> if the execution of <code> fails.
 
-     :max-retry <n>
+     :max-retry <n> or :forever
         will retry the code block in case of failures for a maximum
-        of <n>. Since this express the 're-tries' you should assume
+        of <n> times. Since this express the 're-tries' you should assume
         the total number of attempts to be at most n + 1.
+        When set to :forever it will retry indefinitely.
         Used in conjunction with :default will retry first, and if
         all attempts fails the default value will be returned instead.
         The time between each retry is determined by one of the
         following options, the default strategy is: `:random-exp-backoff'
 
-     :retry-delay [:fix <millis>] (not recommended)
+     :retry-delay [:fix <millis>] (NOT RECOMMENDED)
         To sleep a fix amount of time between retries.
 
      :retry-delay [:random-range :min <millis> :max <millis>]
