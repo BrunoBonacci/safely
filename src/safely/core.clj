@@ -177,7 +177,7 @@
         will be clearly specifying the which part of your code is failing
         for example: \"app.errors.db.writes\"
         and \"app.errors.services.account.fetchuser\" clearly specify
-        which action if currently failing. The tracking is done via
+        which action is currently failing. The tracking is done via
         Samsara/TrackIt! (see: https://github.com/samsara/trackit)
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
@@ -286,7 +286,7 @@
         will be clearly specifying the which part of your code is failing
         for example: \"app.errors.db.writes\"
         and \"app.errors.services.account.fetchuser\" clearly specify
-        which action if currently failing. The tracking is done via
+        which action is currently failing. The tracking is done via
         Samsara/TrackIt! (see: https://github.com/samsara/trackit)
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
