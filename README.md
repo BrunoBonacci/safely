@@ -306,7 +306,7 @@ backoff):
     formula: 3000^1   3000^2      3^3       3^4
     delay:   3000     9000000    27+E9     81+E12
               3s     2.5 hours  +20 years
-             THIS IS NOT HOW SAFELY OPERATE
+             THIS IS NOT HOW SAFELY OPERATES
 
 Which means the second retry will be after *2.5 hours* and the third
 retry will be after *20 years*. I'm sure that none of your apps
