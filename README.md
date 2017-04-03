@@ -547,7 +547,7 @@ returns immediately (same code path, but no sleep).
 
 ```Clojure
 ;; This one does the same number of retries but doesn't sleep
-(binding [*sleepless-mode* true]
+(binding [safely.core/*sleepless-mode* true]
   (safely
     (slurp "/not/existing/file")
     :on-error
@@ -566,6 +566,6 @@ CI status: [![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=sv
 
 ## License
 
-Copyright © 2015 Bruno Bonacci
+Copyright © 2015-2017 Bruno Bonacci
 
 Distributed under the Apache License v 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
