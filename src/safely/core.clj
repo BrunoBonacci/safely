@@ -13,14 +13,15 @@
 
 (def ^:dynamic *sleepless-mode* false)
 (def ^:const defaults
-  {:attempt     0
-   :default     ::undefined
-   :message     "Trapped expected error during safe block execution."
-   :log-errors  true
-   :log-level   :warn
-   :max-retry   0
-   :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]
-   :track-as    nil})
+  {:attempt          0
+   :default          ::undefined
+   :message          "Trapped expected error during safe block execution."
+   :log-errors       true
+   :log-level        :warn
+   :max-retry        0
+   :retry-delay      [:random-exp-backoff :base 3000 :+/- 0.50]
+   :track-as         nil
+   :retryable-error? nil})
 
 
 
@@ -154,6 +155,16 @@
         retry will wait <millis2> +/- <pct> as so on. If the :max-retry
         exceeds the number of waiting time it will restart from <millis1>.
 
+     :retryable-error? (fn [exception] true)
+        In cases where only certain type of errors can be retried but
+        not others, you can define a function which takes in input
+        the exception raised and returns whether this exception
+        should be retried or not. This will only be called when
+        all other conditions are met (like :max-retry etc).
+        For example if you wish not to retry ArithmeticException
+        you could use something like:
+        `:retryable-error? #(not (#{ArithmeticException} (type %)))`
+
 
    Exceptions are logged automatically. Here some options to control logging
 
@@ -186,12 +197,14 @@
   (let [spec' (apply-defaults spec defaults)
         ;; lazy execution as only needed in case of error
         delayer (delay (apply sleeper (:retry-delay spec')))]
-    (loop [{:keys [message default max-retry attempt track-as] :as data} spec']
+    (loop [{:keys [message default max-retry attempt track-as
+                   retryable-error?] :as data} spec']
       (let [[result ex] (make-attempt spec' f)]
         ;; check execution outcome
         (if (not= ::got-error result)
           ;; it ran successfully
           result
+
           ;; else: we have an error
           (do
             ;; track the rate/count of errors
@@ -205,6 +218,10 @@
 
               ;; we got error and reached the max retry
               (and (= ::undefined default) (>= attempt max-retry))
+              (throw (ex-info message data ex))
+
+              ;; check whether this is a retryable error
+              (and retryable-error? (not (retryable-error? ex)))
               (throw (ex-info message data ex))
 
               ;; retry
@@ -263,6 +280,15 @@
         retry will wait <millis2> +/- <pct> as so on. If the :max-retry
         exceeds the number of waiting time it will restart from <millis1>.
 
+     :retryable-error? (fn [exception] true)
+        In cases where only certain type of errors can be retried but
+        not others, you can define a function which takes in input
+        the exception raised and returns whether this exception
+        should be retried or not. This will only be called when
+        all other conditions are met (like :max-retry etc).
+        For example if you wish not to retry ArithmeticException
+        you could use something like:
+        `:retryable-error? #(not (#{ArithmeticException} (type %)))`
 
    Exceptions are logged automatically. Here some options to control logging
 
