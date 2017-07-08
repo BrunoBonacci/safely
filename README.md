@@ -16,7 +16,7 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ``` clojure
-[com.brunobonacci/safely "0.2.4"]
+[com.brunobonacci/safely "0.3.0"]
 ```
 
 Current version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
