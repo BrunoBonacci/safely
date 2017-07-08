@@ -159,8 +159,9 @@
         In cases where only certain type of errors can be retried but
         not others, you can define a function which takes in input
         the exception raised and returns whether this exception
-        should be retried or not. This will only be called when
-        all other conditions are met (like :max-retry etc).
+        should be retried or not. If the error isn't retryable
+        the exception will be thrown up to be handled outside
+        of the safely block.
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
@@ -212,16 +213,16 @@
               (track-rate track-as))
             ;; handle the outcome
             (cond
+              ;; check whether this is a retryable error
+              (and retryable-error? (not (retryable-error? ex)))
+              (throw ex)
+
               ;; we reached the max retry but we have a default
               (and (not= ::undefined default) (>= attempt max-retry))
               default
 
               ;; we got error and reached the max retry
               (and (= ::undefined default) (>= attempt max-retry))
-              (throw (ex-info message data ex))
-
-              ;; check whether this is a retryable error
-              (and retryable-error? (not (retryable-error? ex)))
               (throw (ex-info message data ex))
 
               ;; retry
@@ -284,8 +285,9 @@
         In cases where only certain type of errors can be retried but
         not others, you can define a function which takes in input
         the exception raised and returns whether this exception
-        should be retried or not. This will only be called when
-        all other conditions are met (like :max-retry etc).
+        should be retried or not. If the error isn't retryable
+        the exception will be thrown up to be handled outside
+        of the safely block.
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`

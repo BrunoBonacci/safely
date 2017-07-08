@@ -69,6 +69,12 @@ Overall syntax
  ;; or wait a given list of times with a random variation
  :retry-delay [:rand-cycle [50 100 250 700 1250 2500] :+/- 0.50]
 
+ ;; you can provide a predicate function which determine
+ ;; which class of errors are retryable. Just write a
+ ;; function which takes an exception and return something
+ ;; truthy or falsey.
+ :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
+
  ;; set to false if you don't want to log errors
  :log-errors false
 

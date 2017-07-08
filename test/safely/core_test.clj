@@ -23,9 +23,11 @@
        ~body#
        @*counter*)))
 
+
 (defmacro sleepless [& body]
   `(binding [*sleepless-mode* true]
      ~@body))
+
 
 (def rand-between-boudaries
   (prop/for-all [a gen/int
@@ -35,7 +37,6 @@
                   (<= m1 (random :min a :max b) m2))))
 
 
-(interleave [:a :c :d] [:b])
 
 (expect {:result true}
         (in (tc/quick-check 1000 rand-between-boudaries)))
@@ -109,3 +110,26 @@
           (boom)
           :on-error
           :max-retry 3)))
+
+
+;;
+;; using `:retryable-error?` predicate to filter which error should be retried
+;;
+(expect ArithmeticException
+        (sleepless
+         (safely
+          (/ 1 0)
+          :on-error
+          :max-retry 5
+          :default 10
+          :retryable-error? #(not (#{ArithmeticException} (type %))))))
+
+
+(expect 10  ;; in this case
+        (sleepless
+         (safely
+          (boom)
+          :on-error
+          :max-retry 5
+          :default 10
+          :retryable-error? #(not (#{ArithmeticException} (type %))))))
