@@ -236,7 +236,7 @@ delay 3 seconds (3000 milliseconds) exacatly. This strategy is
 strongly discouraged in order to minimize self emergent behaviour.
 
 ```Clojure
-;; Automatic retry with random-range
+;; Automatic retry with fix interval (NOT RECOMMENDED)
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
