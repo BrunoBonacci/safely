@@ -1,8 +1,9 @@
 (ns safely.core
   (:require [clojure.core.match :refer [match]]
-            [defun :refer [defun]]
             [clojure.tools.logging :as log]
-            [samsara.trackit :refer [track-rate]]))
+            [defun :refer [defun]]
+            [samsara.trackit :refer [track-rate]]
+            [safely.thread-pool :refer :all]))
 
 ;;
 ;; TODO:
@@ -104,7 +105,7 @@
     (catch Throwable x
       (when log-errors
         (log/log log-level x message))
-      [::got-error x])))
+      [nil x])))
 
 
 
@@ -202,14 +203,14 @@
                    retryable-error?] :as data} spec']
       (let [[result ex] (make-attempt spec' f)]
         ;; check execution outcome
-        (if (not= ::got-error result)
+        (if (nil? ex)
           ;; it ran successfully
           result
 
           ;; else: we have an error
           (do
             ;; track the rate/count of errors
-            (when (and track-as (= ::got-error result))
+            (when (and track-as (not (nil? ex)))
               (track-rate track-as))
             ;; handle the outcome
             (cond
@@ -322,8 +323,31 @@
   [& code]
   (let [[body _ options :as seg] (partition-by #{:on-error} code)]
     (if (not= 3 (count seg))
-      (throw (IllegalArgumentException. "Missing or invalid ':on-error' clause."))
+      (throw (IllegalArgumentException.
+              "Missing or invalid ':on-error' clause."))
       `(safely-fn
         (fn []
           ~@body)
         ~@options))))
+
+
+
+
+(comment
+
+
+  (def ^java.util.concurrent.ExecutorService pool
+    (fixed-thread-pool "safely.test" 5 :queue-size 5))
+
+
+  (execute-with-pool
+   pool 3000
+   (fn []
+     (println "long running job")
+     (Thread/sleep (rand-int 5000))
+     (if (< (rand) 1/3)
+       (throw (ex-info "boom" {}))
+       (rand-int 1000))))
+
+
+)
