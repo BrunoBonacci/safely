@@ -12,7 +12,8 @@
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [defun "0.2.0"]
                  [org.clojure/tools.logging "0.3.1"]
-                 [samsara/trackit-core "0.5.0"]]
+                 [samsara/trackit-core "0.5.0"]
+                 [amalloy/ring-buffer "1.2.1"]]
 
   :global-vars {*warn-on-reflection* true}
 

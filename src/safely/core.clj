@@ -1,9 +1,9 @@
 (ns safely.core
-  (:require [clojure.core.match :refer [match]]
+  (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clojure.tools.logging :as log]
             [defun :refer [defun]]
-            [samsara.trackit :refer [track-rate]]
-            [safely.thread-pool :refer :all]))
+            [safely.thread-pool :refer :all]
+            [samsara.trackit :refer [track-rate]]))
 
 ;;
 ;; TODO:
@@ -339,15 +339,37 @@
   (def ^java.util.concurrent.ExecutorService pool
     (fixed-thread-pool "safely.test" 5 :queue-size 5))
 
-
-  (execute-with-pool
-   pool 3000
-   (fn []
-     (println "long running job")
-     (Thread/sleep (rand-int 5000))
-     (if (< (rand) 1/3)
-       (throw (ex-info "boom" {}))
-       (rand-int 1000))))
+  (def cb-stats (atom {}))
 
 
-)
+  (def f (fn []
+           (println "long running job")
+           (Thread/sleep (rand-int 5000))
+           (if (< (rand) 1/3)
+             (throw (ex-info "boom" {}))
+             (rand-int 1000))))
+
+
+  (defn execute-with-breaker
+    [pool cb-name f {:keys [timeout sample-size] :as options}]
+    (let [[_ fail :as  result]
+          (execute-with-pool pool timeout f)]
+      (swap! cb-stats update cb-name
+             (fnil conj (ring-buffer sample-size)) fail)
+      result))
+
+
+  (execute-with-breaker
+   pool "safely.test" f
+   {:sample-size 10 :timeout 3000})
+
+
+
+  (update @cb-stats "safely.test"
+          (fn [rb]
+            (->> rb
+                 (map (fn [x] (if (instance? Exception x) :error x)))
+                 (into (empty rb)))))
+
+
+  )
