@@ -352,10 +352,12 @@
 
   (defn execute-with-breaker
     [pool cb-name f {:keys [timeout sample-size] :as options}]
-    (let [[_ fail :as  result]
-          (execute-with-pool pool timeout f)]
+    (let [[_ fail :as  result] (execute-with-pool pool timeout f)]
       (swap! cb-stats update cb-name
-             (fnil conj (ring-buffer sample-size)) fail)
+             (fnil conj (ring-buffer sample-size))
+             {:timestamp (System/currentTimeMillis)
+              :failure (if (instance? Exception fail) :error fail)
+              :error   (when (instance? Exception fail) fail)})
       result))
 
 
@@ -365,11 +367,11 @@
 
 
 
-  (update @cb-stats "safely.test"
-          (fn [rb]
-            (->> rb
-                 (map (fn [x] (if (instance? Exception x) :error x)))
-                 (into (empty rb)))))
+  (->> @cb-stats
+       first
+       second
+       (map (fn [x] (dissoc x :error))))
+
 
 
   )
