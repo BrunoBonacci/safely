@@ -335,6 +335,14 @@
 
 (comment
 
+  ;; TODO: create pool and add it if not exists
+  ;; TODO: add function to evaluate samples
+  ;;       and open/close circuit
+  ;; TODO: refactor metrics
+  ;; TODO: add documentation
+  ;; TODO: cancel timed out tasks.
+  ;; TODO: log stacktrace?
+  ;; TODO: specify logger namespace.
 
   (def ^java.util.concurrent.ExecutorService pool
     (fixed-thread-pool "safely.test" 5 :queue-size 5))
