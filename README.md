@@ -445,6 +445,9 @@ We have:
   you can disable it with: `:log-errors false`
 * `:log-stacktrace` (`true`|`false`) whether to report the full
   stacktrace of the exception or omit it completely. (default `true`)
+* `:log-ns "logger.name"` To specify a logger name. Typically the
+  name of a namespace. When using the macro it defaults to the current
+  namespace, when using the function version it defaults to `safely.log`
 
 For example this log the exception with the given message and a log
 level of `:info`.

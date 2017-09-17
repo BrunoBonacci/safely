@@ -20,6 +20,7 @@
    :log-errors       true
    :log-level        :warn
    :log-stacktrace   true
+   :log-ns           "safely.log"
    :max-retry        0
    :retry-delay      [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :track-as         nil
@@ -99,15 +100,13 @@
 
 
 (defn- make-attempt
-  [{:keys [message log-errors log-level log-stacktrace]}
+  [{:keys [message log-ns log-errors log-level log-stacktrace]}
    f]
   (try
     [(f)]
     (catch Throwable x
       (when log-errors
-        (if log-stacktrace
-          (log/log log-level x message)
-          (log/log log-level message)))
+        (log/log log-ns log-level (when log-stacktrace x) message))
       [nil x])))
 
 
@@ -189,6 +188,9 @@
 
      :log-stacktrace false (default true)
         To disable stacktrace reporting in the logs.
+
+     :log-ns \"your.namespace\" (default `safely.log`)
+        To select the namespace logger. It defaults to the `safely.log`.
 
    It is possible to track the number or and the rate of error automatically
    in your monitoring system of choice by just adding the name under which
@@ -320,6 +322,9 @@
      :log-stacktrace false (default true)
         To disable stacktrace reporting in the logs.
 
+     :log-ns \"your.namespace\" (default `*ns*`)
+        To select the namespace logger. It defaults to the current ns.
+
    It is possible to track the number or and the rate of error automatically
    in your monitoring system of choice by just adding the name under which
    you want to track this error. By default is not enabled.
@@ -342,6 +347,7 @@
       `(safely-fn
         (fn []
           ~@body)
+        :log-ns *ns*
         ~@options))))
 
 
@@ -355,7 +361,6 @@
   ;; TODO: refactor metrics
   ;; TODO: add documentation
   ;; TODO: cancel timed out tasks.
-  ;; TODO: specify logger namespace.
 
   (def ^java.util.concurrent.ExecutorService pool
     (fixed-thread-pool "safely.test" 5 :queue-size 5))
@@ -392,7 +397,5 @@
        first
        second
        (map (fn [x] (dissoc x :error))))
-
-
 
   )
