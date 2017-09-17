@@ -63,7 +63,7 @@ Overall syntax
  :retry-delay [:random 3000 :+/- 0.35]
 
  ;; or wait an exponential amount of time with a random variation
- :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50] ;; default
+ :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]
  :retry-delay [:random-exp-backoff :base 3000 :+/- 0.35 :max 25000]
 
  ;; or wait a given list of times with a random variation
@@ -209,6 +209,8 @@ the appearance of these large scale issues.
 
 All delay strategies are randomized by default, here is a list of those
 we currently support.
+
+The default configuration is: `[:random-exp-backoff :base 300 :+/- 0.50 :max 60000]`
 
 * `:random-range` (min/max) - it define a random range between a fixed boundary
 * `:random` (amount +/- random percentage) - It define an amount and

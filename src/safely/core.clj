@@ -20,7 +20,7 @@
    :log-errors       true
    :log-level        :warn
    :max-retry        0
-   :retry-delay      [:random-exp-backoff :base 3000 :+/- 0.50]
+   :retry-delay      [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :track-as         nil
    :retryable-error? nil})
 
@@ -364,8 +364,8 @@
       (swap! cb-stats update cb-name
              (fnil conj (ring-buffer sample-size))
              {:timestamp (System/currentTimeMillis)
-              :failure (if (instance? Exception fail) :error fail)
-              :error   (when (instance? Exception fail) fail)})
+              :failure   (if (instance? Exception fail) :error fail)
+              :error     (when (instance? Exception fail) fail)})
       result))
 
 
