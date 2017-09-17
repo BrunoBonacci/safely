@@ -75,14 +75,18 @@ Overall syntax
  ;; truthy or falsey.
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
+
+ ;; customize your error message for logs
+ :message "a custom error message"
+
  ;; set to false if you don't want to log errors
  :log-errors false
 
  ;; or choose the logging level
  :log-level :warn
 
- ;; customize your error message for logs
- :message "a custom error message"
+ ;; to disable the stacktrace reporting in the logs
+ :log-stacktrace false
 
  ;; and track the number of failure with the given metrics name
  :track-as "myproject.errors.mymodule.myaction"
@@ -435,10 +439,12 @@ We have:
   achieve.
 * `:log-level` the level to use while logging the exception. The
   default value is `:warn`, other possible values are: `:trace`,
-  `:debug`, `:info`, `:warn`, `:error`, `:fatal`, `:report`
+  `:debug`, `:info`, `:warn`, `:error` and `:fatal`
 * `:log-errors` (`true`|`false`) whether or not the error must be
   logged. If you don't want to log exceptions in a particular block
   you can disable it with: `:log-errors false`
+* `:log-stacktrace` (`true`|`false`) whether to report the full
+  stacktrace of the exception or omit it completely. (default `true`)
 
 For example this log the exception with the given message and a log
 level of `:info`.

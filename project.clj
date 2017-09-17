@@ -19,6 +19,8 @@
 
   :jvm-opts ["-server"]
 
-  :profiles {:dev {:dependencies [[org.clojure/test.check "0.9.0"]
-                                  [expectations "2.1.9"]]
+  :profiles {:dev {:resource-paths ["dev-resources"]
+                   :dependencies [[org.clojure/test.check "0.9.0"]
+                                  [expectations "2.1.9"]
+                                  [org.slf4j/slf4j-log4j12 "1.7.25"]]
                    :plugins [[lein-expectations "0.0.8"]]}})

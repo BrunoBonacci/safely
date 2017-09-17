@@ -19,6 +19,7 @@
    :message          "Trapped expected error during safe block execution."
    :log-errors       true
    :log-level        :warn
+   :log-stacktrace   true
    :max-retry        0
    :retry-delay      [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :track-as         nil
@@ -98,13 +99,15 @@
 
 
 (defn- make-attempt
-  [{:keys [message log-errors log-level]}
+  [{:keys [message log-errors log-level log-stacktrace]}
    f]
   (try
     [(f)]
     (catch Throwable x
       (when log-errors
-        (log/log log-level x message))
+        (if log-stacktrace
+          (log/log log-level x message)
+          (log/log log-level message)))
       [nil x])))
 
 
@@ -122,6 +125,9 @@
 
      :default <value>
         will return <value> if the execution of <f> fails.
+
+
+   Available retry policies:
 
      :max-retry <n> or :forever
         will retry the code block in case of failures for a maximum
@@ -170,16 +176,19 @@
 
    Exceptions are logged automatically. Here some options to control logging
 
-     :log-errors false
+     :message \"a custom error message\"
+        To log the error with a custom message which helps to contextualize
+        the error message.
+
+     :log-errors false (default true)
         To disable logging
 
      :log-level <level> (default :warn)
         To log the errors with a given error level, available options:
-        :trace, :debug, :info, :warn, :error, :fatal, :report
+        :trace, :debug, :info, :warn, :error, :fatal
 
-     :message \"a custom error message\"
-        To log the error with a custom message which helps to contextualize
-        the error message.
+     :log-stacktrace false (default true)
+        To disable stacktrace reporting in the logs.
 
    It is possible to track the number or and the rate of error automatically
    in your monitoring system of choice by just adding the name under which
@@ -249,6 +258,8 @@
      :default <value>
         will return <value> if the execution of <code> fails.
 
+   Available retry policies:
+
      :max-retry <n> or :forever
         will retry the code block in case of failures for a maximum
         of <n> times. Since this express the 're-tries' you should assume
@@ -295,16 +306,19 @@
 
    Exceptions are logged automatically. Here some options to control logging
 
-     :log-errors false
+     :message \"a custom error message\"
+        To log the error with a custom message which helps to contextualize
+        the error message.
+
+     :log-errors false (default true)
         To disable logging
 
      :log-level <level> (default :warn)
         To log the errors with a given error level, available options:
-        :trace, :debug, :info, :warn, :error, :fatal, :report
+        :trace, :debug, :info, :warn, :error, :fatal
 
-     :message \"a custom error message\"
-        To log the error with a custom message which helps to contextualize
-        the error message.
+     :log-stacktrace false (default true)
+        To disable stacktrace reporting in the logs.
 
    It is possible to track the number or and the rate of error automatically
    in your monitoring system of choice by just adding the name under which
@@ -341,7 +355,6 @@
   ;; TODO: refactor metrics
   ;; TODO: add documentation
   ;; TODO: cancel timed out tasks.
-  ;; TODO: log stacktrace?
   ;; TODO: specify logger namespace.
 
   (def ^java.util.concurrent.ExecutorService pool
