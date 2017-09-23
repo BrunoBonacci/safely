@@ -7,7 +7,12 @@
 
 ;; TODO: default uncaught-exception-handler
 ;; TODO: thread-groups and thread priority?
+
+
 (defn thread-factory
+  "Creates a thread factory which creates threads
+   with the given prefix and a incremental counter.
+   The threads can be created as daemon."
   [prefix daemon uncaught-exception-handler]
   (let [counter (atom 0)
         handler (reify Thread$UncaughtExceptionHandler
@@ -17,7 +22,7 @@
                      (uncaught-exception-handler t x))))]
     (reify ThreadFactory
       (^Thread newThread [_ ^Runnable r]
-       (let [name (str prefix "[" (swap! counter inc) "]")]
+       (let [name (format "%s[%04d]" prefix (swap! counter inc))]
          (doto (Thread. r name)
            (.setDaemon daemon)
            (.setUncaughtExceptionHandler handler)))))))
@@ -25,6 +30,7 @@
 
 
 (defn thread-pool
+  "Creates a thread pool."
   [{:keys [name core-size max-size keep-alive-time queue-size]
     :or   {name "safely.unnamed" core-size 5 max-size 10
            keep-alive-time 60000 queue-size 50}} ]
@@ -56,13 +62,13 @@
   [^ExecutorService pool thunk]
   (let [value (promise)]
     (try
-    (.execute
-     pool
-     (fn []
-       (try
-         (deliver value [(thunk) nil])
-         (catch Throwable x
-           (deliver value [nil x])))))
+      (.execute
+       pool
+       (fn []
+         (try
+           (deliver value [(thunk) nil])
+           (catch Throwable x
+             (deliver value [nil x])))))
       (catch RejectedExecutionException x
         (deliver value [nil :queue-full])))
     value))
