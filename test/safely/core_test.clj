@@ -48,6 +48,7 @@
 (expect 5
         (safely (/ 10 2)
          :on-error
+         :log-stacktrace false
          :default 1))
 
 
@@ -57,6 +58,7 @@
 (expect 1
         (safely (/ 1 0)
          :on-error
+         :log-stacktrace false
          :default 1))
 
 
@@ -68,6 +70,7 @@
          (safely
           (boom)
           :on-error
+          :log-stacktrace false
           :max-retry 3
           :default 1)))
 
@@ -83,6 +86,7 @@
             10
             (throw (RuntimeException. "boom")))
           :on-error
+          :log-stacktrace false
           :max-retry 3
           :default 1)))
 
@@ -96,6 +100,7 @@
          (safely
           (boom)
           :on-error
+          :log-stacktrace false
           :max-retry 3
           :default 10)))
 
@@ -109,6 +114,7 @@
          (safely
           (boom)
           :on-error
+          :log-stacktrace false
           :max-retry 3)))
 
 
@@ -120,6 +126,7 @@
          (safely
           (/ 1 0)
           :on-error
+          :log-stacktrace false
           :max-retry 5
           :default 10
           :retryable-error? #(not (#{ArithmeticException} (type %))))))
@@ -130,6 +137,7 @@
          (safely
           (boom)
           :on-error
+          :log-stacktrace false
           :max-retry 5
           :default 10
           :retryable-error? #(not (#{ArithmeticException} (type %))))))
