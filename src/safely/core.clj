@@ -40,6 +40,11 @@
 
 
 (defn- exponential-seq
+  "Produces a sequence of exponentially bigger wait times.
+   The exponential base is taken from the most significant
+   digit of `base` and not the entire number.
+   For more info see: https://github.com/BrunoBonacci/safely
+  "
   ([base max-value]
    (map #(min % max-value) (exponential-seq base)))
   ([^long base]
@@ -58,6 +63,8 @@
 
 
 (defun sleep
+  "It sleeps for at least `n` millis when not interrupted.
+   If interrupted, it doesn't throw an exception."
   ([n]
    (when-not *sleepless-mode*
      (try
@@ -73,9 +80,15 @@
 
 
 (defun sleeper
+  "It returns a function (potentially stateful) which will sleep for a
+   given amount of time each time it is called. All sleeps are
+   randomized with the exception of the `[:fix n]` sleep (not
+   recommended)."
+
   ([:fix n]                      (fn [] (sleep n)))
   ([:random b :+/- v]            (fn [] (sleep b :+/- v)))
   ([:random-range :min l :max h] (fn [] (sleep :min l :max h)))
+
 
   ([:random-exp-backoff :base b :+/- v]
    (let [sleep-times (atom (cons 0 (exponential-seq b)))]
@@ -83,11 +96,13 @@
        (let [[t] (swap! sleep-times rest)]
          (sleep t :+/- v)))))
 
+
   ([:random-exp-backoff :base b :+/- v :max m]
    (let [sleep-times (atom (cons 0 (exponential-seq b m)))]
      (fn []
        (let [[t] (swap! sleep-times rest)]
          (sleep t :+/- v)))))
+
 
   ([:rand-cycle c :+/- v ]
    (let [sleep-times (atom (cons 0 (cycle c)))]
