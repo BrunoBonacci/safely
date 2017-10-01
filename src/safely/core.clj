@@ -1,6 +1,7 @@
 (ns safely.core
   (:require [clojure.tools.logging :as log]
             [defun :refer [defun]]
+            [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
             [samsara.trackit :refer [track-rate]]))
 
 ;;
@@ -22,7 +23,14 @@
    :max-retry        0
    :retry-delay      [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :track-as         nil
-   :retryable-error? nil})
+   :retryable-error? nil
+
+   ;; Circuit-Breaker options
+   :thread-pool-size 10
+   :queue-size       5
+   :sample-size      100
+   :timeout          Long/MAX_VALUE
+   })
 
 
 
@@ -30,6 +38,14 @@
   (-> (merge defaults cfg)
       (update :max-retry (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                       ---==| S L E E P E R S |==----                       ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defun random
@@ -112,7 +128,15 @@
 
 
 
-(defn- make-attempt
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                   ---==| A T T E M P T   C A L L |==----                   ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defn- make-attempt-direct
   [{:keys [message log-ns log-errors log-level log-stacktrace]}
    f]
   (try
@@ -122,6 +146,60 @@
         (log/log log-ns log-level (when log-stacktrace x) message))
       [nil x])))
 
+
+
+(defn- normalize-failure
+  [[value failure error]]
+  (cond
+    ;; successful execution
+    (nil? failure)            [value]
+
+    ;; exception thrown
+    (= :error failure)        [nil error]
+
+    ;; queue-full
+    (= :queue-full failure)   [nil (ex-info "queue-full" {})] ;;TODO: fixit
+
+    ;; timeout
+    (= :timeout failure)      [nil (ex-info "timeout" {})] ;;TODO: fixit
+    ))
+
+
+
+;; new options:
+;; - :circuit-breaker :name.of.the.call
+;; - :thread-pool-size
+;; - :queue-size
+;; - :sample-size 10
+;; - :timeout 3000
+(defn- make-attempt-with-circuit-breaker
+  [{:keys [message log-ns log-errors log-level log-stacktrace] :as opts}
+   f]
+  (let [[value error :as result] (->
+                                  (execute-with-circuit-breaker f opts)
+                                  normalize-failure)]
+    ;; log error if required
+    (when (and error log-errors)
+      (log/log log-ns log-level (when log-stacktrace error) message))
+    ;; return operation result
+    result))
+
+
+
+(defn- make-attempt
+  [{:keys [circuit-breaker] :as opts} f]
+  (if circuit-breaker
+    (make-attempt-with-circuit-breaker opts f)
+    (make-attempt-direct opts f)))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                    ---==| C O R E   S A F E L Y |==----                    ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn safely-fn

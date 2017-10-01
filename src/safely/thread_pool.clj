@@ -53,12 +53,11 @@
 
 
 (defn async-execute-with-pool
-  "It returns a promise which will deliver tuple which
-   where the first value is a the result of the execution
-   of the thunk. The second value is nil when the execution
-   is successful or the value can be an exception if the
-   thunk throws an exception, `:queue-full` when the thread
-   pool can't accent any more tasks."
+  "It returns a promise which will deliver tuple of 3 values where the
+  first value is a the result of the execution of the thunk. The
+  second value is `nil` when the execution is successful or `:error`
+  if the thunk throws an exception, and `:queue-full` when the thread
+  pool can't accent any more tasks."
   [^ExecutorService pool thunk]
   (let [value (promise)]
     (try
@@ -66,16 +65,22 @@
        pool
        (fn []
          (try
-           (deliver value [(thunk) nil])
+           (deliver value [(thunk) nil nil])
            (catch Throwable x
-             (deliver value [nil x])))))
+             (deliver value [nil :error x])))))
       (catch RejectedExecutionException x
-        (deliver value [nil :queue-full])))
+        (deliver value [nil :queue-full nil])))
     value))
 
 
 
 (defn execute-with-pool
+  "It returns a promise which will deliver tuple of 3 values where the
+  first value is a the result of the execution of the thunk. The
+  second value is `nil` when the execution is successful or `:error`
+  if the thunk throws an exception,`:queue-full` when the thread
+  pool can't accent any more tasks, and `:timeout` when a timeout
+  was reached."
   [^ExecutorService pool timeout thunk]
   (let [value (async-execute-with-pool pool thunk)]
-    (deref value timeout [nil :timeout])))
+    (deref value timeout [nil :timeout nil])))
