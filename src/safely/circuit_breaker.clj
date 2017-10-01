@@ -6,9 +6,89 @@
 
 
 
-(def cb-stats (atom {}))
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;          ---==| C I R C U I T - B R E A K E R   S T A T S |==----          ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+
+(defn- update-samples
+  [stats timestamp [_ fail error] {:keys [sample-size]}]
+  (update stats
+          :samples
+          (fnil conj (ring-buffer sample-size))
+          {:timestamp timestamp
+           :failure   fail
+           :error     error}))
+
+
+
+(defn- update-counters
+  [stats timestamp [ok fail] {:keys [sample-size window-time-size]}]
+  (update stats
+          :counters
+          (fn [cnts]
+            (as-> (or cnts (sorted-map)) $
+              (update $ (quot timestamp 1000)
+                      (fn [{:keys [success error
+                                  timeout rejected]}]
+                        (let [success  (or success 0)
+                              error    (or error 0)
+                              timeout  (or timeout 0)
+                              rejected (or rejected 0)]
+
+                          (case fail
+
+                            nil
+                            {:success   (inc success)
+                             :error     error
+                             :timeout   timeout
+                             :rejected  rejected}
+
+                            :error
+                            {:success   success
+                             :error     (inc error)
+                             :timeout   timeout
+                             :rejected  rejected}
+
+                            :timeout
+                            {:success   success
+                             :error     error
+                             :timeout   (inc timeout)
+                             :rejected  rejected}
+
+                            :queue-full
+                            {:success   success
+                             :error     error
+                             :timeout   timeout
+                             :rejected  (inc rejected)}))))
+              (if (> (count $) window-time-size)
+                (dissoc $ (ffirst $))
+                $)))))
+
+
+
+(defn- update-stats
+  [stats result opts]
+  (let [ts (System/currentTimeMillis)]
+    (-> stats
+        (update-samples ts result opts)
+        (update-counters ts result opts))))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                          ---==| P O O L S |==----                          ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(def cb-stats (atom {}))
 (def cb-pools (atom {}))
+
 
 
 (defn pool
@@ -38,10 +118,7 @@
   (let [tp (pool options) ;; retrieve thread-pool
         [_ fail error :as  result] (execute-with-pool tp timeout f)]
     (swap! cb-stats update (keyword circuit-breaker)
-           (fnil conj (ring-buffer sample-size))
-           {:timestamp (System/currentTimeMillis)
-            :failure   fail
-            :error     error})
+           update-stats result options)
     result))
 
 
@@ -55,7 +132,8 @@
   ;; TODO: cancel timed out tasks.
 
   (def p (pool {:circuit-breaker :safely.test
-                :queue-size 5 :thread-pool-size 5}))
+                :queue-size 5 :thread-pool-size 5
+                :sample-size 20 :window-time-size 10}))
 
   cb-pools
 
@@ -70,14 +148,19 @@
 
   (execute-with-circuit-breaker
    f
-   {:circuit-breaker "test" :sample-size 10 :timeout 3000
-    :thread-pool-size 5 :queue-size 5})
+   {:circuit-breaker :safely.test
+    :thread-pool-size 10
+    :queue-size       5
+    :sample-size      100
+    :timeout          3000
+    :window-time-size 10})
 
 
 
   (->> @cb-stats
        first
        second
+       :samples
        (map (fn [x] (dissoc x :error))))
 
   (keys @cb-stats)
