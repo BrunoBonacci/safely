@@ -1,6 +1,6 @@
 (ns safely.circuit-breaker
   (:require [safely.thread-pool :refer
-             [fixed-thread-pool execute-with-pool]]
+             [fixed-thread-pool async-execute-with-pool]]
             [amalloy.ring-buffer :refer [ring-buffer]]
             [clojure.tools.logging :as log]))
 
@@ -28,44 +28,45 @@
   [stats timestamp [ok fail] {:keys [sample-size window-time-size]}]
   (update stats
           :counters
-          (fn [cnts]
-            (as-> (or cnts (sorted-map)) $
-              (update $ (quot timestamp 1000)
-                      (fn [{:keys [success error
-                                  timeout rejected]}]
-                        (let [success  (or success 0)
-                              error    (or error 0)
-                              timeout  (or timeout 0)
-                              rejected (or rejected 0)]
+          (fn [counters]
+            (let [ts     (quot timestamp 1000)
+                  min-ts (- ts window-time-size)]
+              (as-> (or counters (sorted-map)) $
+                (update $ ts
+                        (fn [{:keys [success error
+                                    timeout rejected]}]
+                          (let [success  (or success 0)
+                                error    (or error 0)
+                                timeout  (or timeout 0)
+                                rejected (or rejected 0)]
 
-                          (case fail
+                            (case fail
 
-                            nil
-                            {:success   (inc success)
-                             :error     error
-                             :timeout   timeout
-                             :rejected  rejected}
+                              nil
+                              {:success   (inc success)
+                               :error     error
+                               :timeout   timeout
+                               :rejected  rejected}
 
-                            :error
-                            {:success   success
-                             :error     (inc error)
-                             :timeout   timeout
-                             :rejected  rejected}
+                              :error
+                              {:success   success
+                               :error     (inc error)
+                               :timeout   timeout
+                               :rejected  rejected}
 
-                            :timeout
-                            {:success   success
-                             :error     error
-                             :timeout   (inc timeout)
-                             :rejected  rejected}
+                              :timeout
+                              {:success   success
+                               :error     error
+                               :timeout   (inc timeout)
+                               :rejected  rejected}
 
-                            :queue-full
-                            {:success   success
-                             :error     error
-                             :timeout   timeout
-                             :rejected  (inc rejected)}))))
-              (if (> (count $) window-time-size)
-                (dissoc $ (ffirst $))
-                $)))))
+                              :queue-full
+                              {:success   success
+                               :error     error
+                               :timeout   timeout
+                               :rejected  (inc rejected)}))))
+                ;; keep only last `window-time-size` entries
+                (apply dissoc $ (filter #(< % min-ts) (map first $))))))))
 
 
 
@@ -115,10 +116,17 @@
 
 (defn execute-with-circuit-breaker
   [f {:keys [circuit-breaker timeout sample-size] :as options}]
-  (let [tp (pool options) ;; retrieve thread-pool
-        [_ fail error :as  result] (execute-with-pool tp timeout f)]
-    (swap! cb-stats update (keyword circuit-breaker)
-           update-stats result options)
+  (let [tp     (pool options) ;; retrieve thread-pool
+        result (async-execute-with-pool tp f)
+        _      (swap! cb-stats update :in-flight (fnil inc 0))
+        [_ fail error :as  result] (deref result timeout [nil :timeout nil])]
+    ;; update stats
+    (swap! cb-stats
+           (fn [sts]
+             (-> sts
+                 (update-in [:cbs (keyword circuit-breaker)]
+                            update-stats result options)
+                 (update :in-flight (fnil dec 0)))))
     result))
 
 
@@ -157,7 +165,17 @@
 
 
 
+  (as-> @cb-stats $
+    (:cbs $)
+    (:safely.test $)
+    (:counters $)
+    )
+
+
+  (apply dissoc $ (filter #(>= (first %) min-ts) $))
+
   (->> @cb-stats
+       :cbs
        first
        second
        :samples
