@@ -65,6 +65,7 @@
                                :error     error
                                :timeout   timeout
                                :rejected  (inc rejected)}))))
+
                 ;; keep only last `window-time-size` entries
                 (apply dissoc $ (filter #(< % min-ts) (map first $))))))))
 
@@ -74,7 +75,7 @@
   [stats result opts]
   (let [ts (System/currentTimeMillis)]
     (-> stats
-        (update-samples ts result opts)
+        (update-samples  ts result opts)
         (update-counters ts result opts))))
 
 
@@ -117,9 +118,9 @@
 (defn execute-with-circuit-breaker
   [f {:keys [circuit-breaker timeout sample-size] :as options}]
   (let [tp     (pool options) ;; retrieve thread-pool
-        result (async-execute-with-pool tp f)
+        value  (async-execute-with-pool tp f)
         _      (swap! cb-stats update :in-flight (fnil inc 0))
-        [_ fail error :as  result] (deref result timeout [nil :timeout nil])]
+        [_ fail error :as  result] (deref value timeout [nil :timeout nil])]
     ;; update stats
     (swap! cb-stats
            (fn [sts]
@@ -171,8 +172,6 @@
     (:counters $)
     )
 
-
-  (apply dissoc $ (filter #(>= (first %) min-ts) $))
 
   (->> @cb-stats
        :cbs
