@@ -30,7 +30,7 @@
    :queue-size       5
    :sample-size      100
    :timeout          Long/MAX_VALUE
-   :window-time-size 10
+   :counters-buckets 10
    })
 
 
@@ -173,7 +173,7 @@
 ;; - :queue-size
 ;; - :sample-size 10
 ;; - :timeout 3000
-;; - :window-time-size 10
+;; - :counters-buckets 10
 (defn- make-attempt-with-circuit-breaker
   [{:keys [message log-ns log-errors log-level log-stacktrace] :as opts}
    f]
