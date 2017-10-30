@@ -85,12 +85,18 @@
 
 (comment
   ;; cb stats
-  {:cb-name1 (atom
-              {:counters {1509199799 {:success 0, :error 1, :timeout 0, :rejected 0, :open 0}},
-               :samples [{:timestamp 1, :failure nil :error nil}
-                         {:timestamp 2, :failure :timeout :error nil}]
-               })}
+  {:cb-name1
+   (atom
+    {:status :closed
+     :in-flight 0
+     :last-status-change 1509199400
+
+     :counters {1509199799 {:success 0, :error 1, :timeout 0, :rejected 0, :open 0}},
+     :samples [{:timestamp 1, :failure nil :error nil}
+               {:timestamp 2, :failure :timeout :error nil}]
+     })}
   )
+
 (def cb-stats (atom {}))
 (def cb-pools (atom {}))
 
@@ -135,6 +141,7 @@
               ;; if it doesn't exists then create one and initialize it.
               (atom
                {:status :closed :in-flight 0
+                :last-status-change (System/currentTimeMillis)
                 :samples (ring-buffer sample-size) :counters {}}))))
         (get (keyword circuit-breaker)))))
 
@@ -178,14 +185,18 @@
 
 
 
-(defn- should-allow-1-request?
+(defn- should-allow-next-request?
   [stats-atom {:keys [circuit-breaker circuit-closed?] :as options}]
   (as-> stats-atom $
     (swap! $ (fn [stats]
-               (let [closed? (circuit-closed? stats)]
+               (let [closed? (circuit-closed? options stats)]
                  (as-> stats $
                    ;; update status
                    (update $ :status (fn [os] (if closed? :closed :open)))
+                   ;; If the status changed then let's update the timestamp
+                   (if (not= (:status stats) (:status $))
+                     (assoc $ :last-status-change (System/currentTimeMillis))
+                     $)
                    ;; if circuit is closed then increment the number of
                    ;; in flight requests.
                    (if closed?
@@ -200,7 +211,7 @@
   (let [stats (circuit-breaker-stats options)
         result
         ;;  check if circuit is open or closed.
-        (if (should-allow-1-request? stats options)
+        (if (should-allow-next-request? stats options)
           ;; retrieve or create thread-pool
           (-> (pool options)
               ;; executed in thread-pool and get a promise of result
@@ -215,6 +226,37 @@
     ;; return result
     result))
 
+
+(defn sum-counters
+  ([] {:success 0, :error 0, :timeout 0, :rejected 0, :open 0})
+  ([c1] c1)
+  ([{s1 :success, e1 :error, t1 :timeout, r1 :rejected, o1 :open}
+    {s2 :success, e2 :error, t2 :timeout, r2 :rejected, o2 :open}]
+   {:success (+ s1 s2), :error (+ e1 e2),
+    :timeout (+ t1 t2), :rejected (+ r1 r2),
+    :open (+ o1 o2)}))
+
+
+(defn closed?-by-failure-threshold
+  [{:keys [failure-threshold counters-buckets]} {:keys [status counters]}]
+  (prn status failure-threshold counters)
+  (let [ts (System/currentTimeMillis)
+        tot-counters (->> counters
+                          ;; take only last 10 seconds
+                          (filter #(> (first %) (- ts counters-buckets)))
+                          (map second)
+                          (reduce sum-counters))
+        {:keys [success, error, timeout, rejected]} tot-counters
+        failures (+ error, timeout, rejected)
+        total    (+ success failures)]
+    (cond
+      ;; if no requests are counted then it is open
+      (== 0 total) true
+      ;; if the failures % is bigger than the threshold
+      ;; then trip the circuit open
+      (> (/ failures total) failure-threshold) false
+      ;; otherwise it is still closed.
+      :else true)))
 
 
 (comment
@@ -248,13 +290,28 @@
     :sample-size      100
     :timeout          3000
     :counters-buckets 10
-    :circuit-closed?  (constantly true)})
+    :circuit-closed?  closed?-by-failure-threshold
+    :failure-threshold 0.5})
+
+
+  (as-> @cb-stats $
+    (:safely.test $)
+    (deref $)
+    )
 
   (as-> @cb-stats $
     (:safely.test $)
     (deref $)
     (:counters $)
     )
+
+  (as-> @cb-stats $
+    (:safely.test $)
+    (deref $)
+    (:counters $)
+    (map second $)
+    (reduce sum-counters $))
+
 
 
   (->> @cb-stats
