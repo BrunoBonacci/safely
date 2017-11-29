@@ -11,8 +11,8 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.match "0.3.0-alpha4"]
                  [defun "0.2.0"]
-                 [org.clojure/tools.logging "0.3.1"]
-                 [samsara/trackit-core "0.5.0"]
+                 [org.clojure/tools.logging "0.4.0"]
+                 [samsara/trackit-core "0.6.0"]
                  [amalloy/ring-buffer "1.2.1"]]
 
   :global-vars {*warn-on-reflection* true}
@@ -21,6 +21,9 @@
 
   :profiles {:dev {:resource-paths ["dev-resources"]
                    :dependencies [[org.clojure/test.check "0.9.0"]
-                                  [expectations "2.1.9"]
+                                  [midje "1.9.0"]
                                   [org.slf4j/slf4j-log4j12 "1.7.25"]]
-                   :plugins [[lein-expectations "0.0.8"]]}})
+                   :plugins [[lein-midje "3.2.1"]]}}
+
+  :aliases {"test" ["do" "clean," "midje"]}
+  )
