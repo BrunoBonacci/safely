@@ -239,7 +239,6 @@
 
 (defn closed?-by-failure-threshold
   [{:keys [failure-threshold counters-buckets]} {:keys [status counters]}]
-  (prn status failure-threshold counters)
   (let [ts (System/currentTimeMillis)
         tot-counters (->> counters
                           ;; take only last 10 seconds
@@ -322,5 +321,23 @@
        (map (fn [x] (dissoc x :error))))
 
   (keys @cb-stats)
+
+
+  (safely.core/safely
+   (println "long running job")
+   (Thread/sleep (rand-int 3000))
+   (if (< (rand) 1/3)
+     (throw (ex-info "boom" {}))
+     (rand-int 1000))
+   :on-error
+   :circuit-breaker :safely.test
+   :thread-pool-size 10
+   :queue-size       5
+   :sample-size      100
+   :timeout          2000
+   :counters-buckets 10
+   :circuit-closed?  closed?-by-failure-threshold
+   :failure-threshold 0.5)
+
 
   )
