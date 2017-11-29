@@ -138,13 +138,13 @@
 
 
 (defn- make-attempt-direct
-  [{:keys [message log-ns log-errors log-level log-stacktrace]}
+  [{:keys [message log-ns log-errors log-level log-stacktrace call-site]}
    f]
   (try
     [(f)]
     (catch Throwable x
       (when log-errors
-        (log/log log-ns log-level (when log-stacktrace x) message))
+        (log/log log-ns log-level (when log-stacktrace x) (str message " @ " call-site)))
       [nil x])))
 
 
@@ -175,14 +175,14 @@
 ;; - :timeout 3000
 ;; - :counters-buckets 10
 (defn- make-attempt-with-circuit-breaker
-  [{:keys [message log-ns log-errors log-level log-stacktrace] :as opts}
+  [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts}
    f]
   (let [[value error :as result] (->
                                   (execute-with-circuit-breaker f opts)
                                   normalize-failure)]
     ;; log error if required
     (when (and error log-errors)
-      (log/log log-ns log-level (when log-stacktrace error) message))
+      (log/log log-ns log-level (when log-stacktrace error) (str message " @ " call-site)))
     ;; return operation result
     result))
 
@@ -300,7 +300,8 @@
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
   [f & {:as spec}]
-  (let [spec' (apply-defaults spec defaults)
+  (let [;; applying defaults
+        spec' (apply-defaults spec defaults)
         ;; lazy execution as only needed in case of error
         delayer (delay (apply sleeper (:retry-delay spec')))]
     (loop [{:keys [message default max-retry attempt track-as
@@ -433,7 +434,11 @@
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
   [& code]
-  (let [[body _ options :as seg] (partition-by #{:on-error} code)]
+  (let [;; detecting call site
+        {:keys [line column]} (meta &form)
+        call-site# (str *ns* "[l:" line ", c:" column "]")
+        ;; checking options format
+        [body _ options :as seg] (partition-by #{:on-error} code)]
     (if (not= 3 (count seg))
       (throw (IllegalArgumentException.
               "Missing or invalid ':on-error' clause."))
@@ -441,4 +446,5 @@
         (fn []
           ~@body)
         :log-ns *ns*
+        :call-site ~call-site#
         ~@options))))
