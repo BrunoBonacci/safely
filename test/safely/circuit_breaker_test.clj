@@ -30,13 +30,26 @@
 (safely
  "Circuit :test1"
  :on-error
- :circuit-breaker :test1
- :thread-pool-size 10
- :queue-size       5
- :sample-size      100
- :timeout          2000
- :counters-buckets 10
- :circuit-closed?  closed?-by-failure-threshold
+ :circuit-breaker  :test1
+ :thread-pool-size  10
+ :queue-size        5
+ :sample-size       100
+ :timeout           2000
+ :counters-buckets  10
+ :circuit-closed?   #'closed?-by-failure-threshold
+ :failure-threshold 0.5)
+
+
+(safely
+ "Circuit :test-open1"
+ :on-error
+ :circuit-breaker  :test-open1
+ :thread-pool-size  10
+ :queue-size        5
+ :sample-size       100
+ :timeout           2000
+ :counters-buckets  10
+ :circuit-closed?   #'closed?-by-failure-threshold
  :failure-threshold 0.5)
 
 
@@ -106,6 +119,7 @@
      :ok
 
      :on-error
+     :log-stacktrace    false
      :circuit-breaker   :test1
      :thread-pool-size  10
      :queue-size        5))
@@ -121,14 +135,16 @@
  (->>
   (with-parallel 10 ;; thread-pool-size: 10 + queue-size: 5
     (safely
-     (sleep 100)
      (boom)
 
      :on-error
-     :circuit-breaker   :test1))
+     :log-stacktrace    false
+     :circuit-breaker   :test-open1))
 
   frequencies) => {:boom 10}
 
+ ;; wait for the previous batch to complete
+ (sleep 1000)
 
  (->>
   (with-parallel 5
@@ -137,7 +153,8 @@
      :ok
 
      :on-error
-     :circuit-breaker   :test1))
+     :log-stacktrace    false
+     :circuit-breaker   :test-open1))
 
   frequencies) => {:circuit-open 5}
 

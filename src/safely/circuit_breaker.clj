@@ -237,9 +237,10 @@
     :open (+ o1 o2)}))
 
 
+
 (defn closed?-by-failure-threshold
   [{:keys [failure-threshold counters-buckets]} {:keys [status counters]}]
-  (let [ts (System/currentTimeMillis)
+  (let [ts (quot (System/currentTimeMillis) 1000)
         tot-counters (->> counters
                           ;; take only last 10 seconds
                           (filter #(> (first %) (- ts counters-buckets)))

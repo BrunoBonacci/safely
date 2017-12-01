@@ -33,7 +33,7 @@
    :sample-size       100
    :timeout           Long/MAX_VALUE
    :counters-buckets  10
-   :circuit-closed?   closed?-by-failure-threshold
+   :circuit-closed?   #'closed?-by-failure-threshold
    :failure-threshold 0.5
    })
 
