@@ -1,7 +1,9 @@
 (ns safely.core
   (:require [clojure.tools.logging :as log]
             [defun :refer [defun]]
-            [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
+            [safely.circuit-breaker
+             :refer
+             [closed?-by-failure-threshold execute-with-circuit-breaker]]
             [samsara.trackit :refer [track-rate]]))
 
 ;;
@@ -13,24 +15,26 @@
 
 (def ^:dynamic *sleepless-mode* false)
 (def ^:const defaults
-  {:attempt          0
-   :default          ::undefined
-   :message          "Trapped expected error during safe block execution."
-   :log-errors       true
-   :log-level        :warn
-   :log-stacktrace   true
-   :log-ns           "safely.log"
-   :max-retry        0
-   :retry-delay      [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
-   :track-as         nil
-   :retryable-error? nil
+  {:attempt           0
+   :default           ::undefined
+   :message           "Trapped expected error during safe block execution."
+   :log-errors        true
+   :log-level         :warn
+   :log-stacktrace    true
+   :log-ns            "safely.log"
+   :max-retry         0
+   :retry-delay       [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
+   :track-as          nil
+   :retryable-error?  nil
 
    ;; Circuit-Breaker options
-   :thread-pool-size 10
-   :queue-size       5
-   :sample-size      100
-   :timeout          Long/MAX_VALUE
-   :counters-buckets 10
+   :thread-pool-size  10
+   :queue-size        5
+   :sample-size       100
+   :timeout           Long/MAX_VALUE
+   :counters-buckets  10
+   :circuit-closed?   closed?-by-failure-threshold
+   :failure-threshold 0.5
    })
 
 
@@ -159,10 +163,13 @@
     (= :error failure)        [nil error]
 
     ;; queue-full
-    (= :queue-full failure)   [nil (ex-info "queue-full" {})] ;;TODO: fixit
+    (= :queue-full failure)   [nil (ex-info "queue-full" {:cause :queue-full})] ;;TODO: fixit
 
     ;; timeout
-    (= :timeout failure)      [nil (ex-info "timeout" {})] ;;TODO: fixit
+    (= :timeout failure)      [nil (ex-info "timeout" {:cause :timeout})] ;;TODO: fixit
+
+    ;; circuit-open
+    (= :circuit-open failure) [nil (ex-info "circuit-open" {:cause :circuit-open})] ;;TODO: fixit
     ))
 
 

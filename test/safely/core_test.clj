@@ -3,57 +3,9 @@
             [clojure.test.check.generators :as gen]
             [clojure.test.check.properties :as prop]
             [midje.sweet :refer :all]
-            [safely.core :refer :all]))
+            [safely.core :refer :all]
+            [safely.test-utils :refer :all]))
 
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                            ;;
-;;                     ---==| T E S T   U T I L S |==----                     ;;
-;;                                                                            ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-(def ^:dynamic *counter* nil)
-
-
-
-(defn count-passes []
-  (swap! *counter* inc))
-
-
-
-(defn boom []
-  (throw (ex-info "BOOOOM!" {:cause :boom})))
-
-
-
-(defmacro count-retry [body]
-  (let [body# `(~(first body) (count-passes) ~@(next body))]
-    `(binding [*counter* (atom 0)
-               *sleepless-mode* true]
-       [~body#
-        @*counter*])))
-
-
-
-(defmacro sleepless [& body]
-  `(binding [*sleepless-mode* true]
-     ~@body))
-
-
-
-(defn crash-boom-bang!
-  "a utility function which calls the first function in fs
-  the first time is called, it calls the second function
-  the second time is called and so on. It throws an Exception
-  if no more functions are available to fs in a given call."
-  [& fs]
-
-  (let [xfs (atom fs)]
-    (fn [& args]
-      (let [f (or (first @xfs) (fn [&x] (throw (ex-info "No more functions available to call" {:cause :no-more-fn}))))
-            _ (swap! xfs next)]
-        (apply f args)))))
 
 
 

@@ -323,6 +323,8 @@
   (keys @cb-stats)
 
 
+  (require '[safely.core])
+
   (safely.core/safely
    (println "long running job")
    (Thread/sleep (rand-int 3000))
