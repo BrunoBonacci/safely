@@ -1,59 +1,10 @@
 (ns safely.circuit-breaker-test
   (:require [safely.circuit-breaker :refer :all]
-            [midje.sweet :refer :all]
-            [safely.test-utils :refer :all]
-            [safely.core :refer :all]))
+            [safely.core :refer :all]
+            [safely.test-utils :refer :all]))
 
 
-#_(safely.core/safely
-   (println "long running job")
-   (Thread/sleep (rand-int 3000))
-   (if (< (rand) 1/3)
-     (throw (ex-info "boom" {}))
-     (rand-int 1000))
-   :on-error
-   :circuit-breaker :safely.test
-   :thread-pool-size 10
-   :queue-size       5
-   :sample-size      100
-   :timeout          2000
-   :counters-buckets 10
-   :circuit-closed?  closed?-by-failure-threshold
-   :failure-threshold 0.5)
-
-
-;;
-;; initialising circuit breakers used in the tests
-;; to make sure that the configuration is not
-;; assumed to be different on every test.
-;;
-(safely
- "Circuit :test1"
- :on-error
- :circuit-breaker  :test1
- :thread-pool-size  10
- :queue-size        5
- :sample-size       100
- :timeout           2000
- :counters-buckets  10
- :circuit-closed?   #'closed?-by-failure-threshold
- :failure-threshold 0.5)
-
-
-(safely
- "Circuit :test-open1"
- :on-error
- :circuit-breaker  :test-open1
- :thread-pool-size  10
- :queue-size        5
- :sample-size       100
- :timeout           2000
- :counters-buckets  10
- :circuit-closed?   #'closed?-by-failure-threshold
- :failure-threshold 0.5)
-
-
-(fact
+(fact-with-test-pools
 
  "A successful sequence of call must be successful when using a circuit breaker"
 
@@ -63,12 +14,13 @@
          (safely
           i
           :on-error
-          :circuit-breaker :test1)))
+          :circuit-breaker :test)))
       (reduce +)) => 500500
  )
 
 
-(fact
+
+(fact-with-test-pools
  "A parallel successful request must be successful when the number of
  concurrent requests are within the size of the circuit."
 
@@ -79,14 +31,14 @@
      :ok
 
      :on-error
-     :circuit-breaker :test1
+     :circuit-breaker :test
      :thread-pool-size  10))
   frequencies) => {:ok 10}
  )
 
 
 
-(fact
+(fact-with-test-pools
  "A parallel successful request must be successful when the number of
  concurrent requests are within the size of the circuit including queue."
 
@@ -97,7 +49,7 @@
      :ok
 
      :on-error
-     :circuit-breaker   :test1
+     :circuit-breaker   :test
      :thread-pool-size  10
      :queue-size        5))
 
@@ -106,40 +58,41 @@
 
 
 
-(fact
+(fact-with-test-pools
  "A parallel successful request must be successful when the number of
  concurrent requests are within the size of the circuit including queue.
  All concurrent requests beyond the size of the circuit should fail
  with a `queue-full` error."
 
  (->>
-  (with-parallel 20  ;; thread-pool-size: 10 + queue-size: 5
+  (with-parallel 16  ;; thread-pool-size: 10 + queue-size: 5
     (safely
      (sleep 100)
      :ok
 
      :on-error
      :log-stacktrace    false
-     :circuit-breaker   :test1
+     :circuit-breaker   :test
      :thread-pool-size  10
      :queue-size        5))
 
-  frequencies) => {:ok 15 :queue-full 5})
+  frequencies) => {:ok 15 :queue-full 1})
 
 
 
-(fact
+(fact-with-test-pools
  "If requests are failing and the circuit is tripped open,
   then subsequent requests will be rejected immediately."
 
  (->>
   (with-parallel 10 ;; thread-pool-size: 10 + queue-size: 5
     (safely
+     (sleep 100)
      (boom)
 
      :on-error
      :log-stacktrace    false
-     :circuit-breaker   :test-open1))
+     :circuit-breaker   :test))
 
   frequencies) => {:boom 10}
 
@@ -154,7 +107,7 @@
 
      :on-error
      :log-stacktrace    false
-     :circuit-breaker   :test-open1))
+     :circuit-breaker   :test))
 
   frequencies) => {:circuit-open 5}
 

@@ -1,5 +1,6 @@
 (ns safely.test-utils
-  (:require [safely.circuit-breaker :refer [cb-pools cb-stats]]
+  (:require [midje.sweet :refer [after before fact with-state-changes]]
+            [safely.circuit-breaker :refer [cb-pools cb-stats]]
             safely.core)
   (:import clojure.lang.ExceptionInfo
            java.util.concurrent.ThreadPoolExecutor))
@@ -71,21 +72,22 @@
      result#))
 
 
-(comment
-  ;; not working as expected.
-  (defmacro with-test-pools
-    [& body]
-    `(with-redefs
-       [cb-stats (atom {})
-        cb-pools (atom {})]
-       (try
-         ~@body
-         (finally
-           ;; shutdown all threads
-           (->> @cb-pools
-                (run! (fn [[k# ^ThreadPoolExecutor tp#]]
-                        (println "shutting down pool:" k#)
-                        (.shutdownNow tp#)))))))))
+
+(defmacro fact-with-test-pools
+  [& body]
+  `(with-state-changes
+
+    [(before :facts
+             (do
+               (reset! cb-pools {})
+               (reset! cb-stats {})))
+     (after :facts
+            (->> @cb-pools
+                 (run! (fn [[k# ^ThreadPoolExecutor tp#]]
+                         (println "shutting down pool:" k#)
+                         (.shutdownNow tp#)))))]
+
+    (fact ~@body)))
 
 
 
