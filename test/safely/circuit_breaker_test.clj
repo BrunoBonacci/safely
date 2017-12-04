@@ -20,6 +20,7 @@
 
 
 
+
 (fact-with-test-pools
  "A parallel successful request must be successful when the number of
  concurrent requests are within the size of the circuit."
@@ -35,6 +36,7 @@
      :thread-pool-size  10))
   frequencies) => {:ok 10}
  )
+
 
 
 

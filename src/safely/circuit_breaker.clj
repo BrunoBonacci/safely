@@ -142,54 +142,18 @@
               (atom
                {:status :closed :in-flight 0
                 :last-status-change (System/currentTimeMillis)
-                :samples (ring-buffer sample-size) :counters {}}))))
+                :samples (ring-buffer sample-size)
+                :counters {}
+                :config options}))))
         (get (keyword circuit-breaker)))))
 
 
 
-
-(comment
-  (defn execute-with-circuit-breaker
-    [f {:keys [circuit-breaker timeout sample-size] :as options}]
-    (let [tp     (pool options) ;; retrieve or create thread-pool
-          value  (async-execute-with-pool tp f)
-          _      (swap! cb-stats update :in-flight (fnil inc 0))
-          [_ fail error :as  result] (deref value timeout [nil :timeout nil])]
-      ;; update stats
-      (swap! cb-stats
-             (fn [sts]
-               (-> sts
-                   (update-in [:cbs (keyword circuit-breaker)]
-                              update-stats result options)
-                   (update :in-flight (fnil dec 0)))))
-      result))
-
-  (defn execute-with-circuit-breaker
-    [f {:keys [circuit-breaker timeout] :as options}]
-    (if (should-allow-request? cb-stats)
-      (let [;; retrieve or create thread-pool
-            tp     (pool options)
-            ;; executed in thread-pool and get a promise of result
-            value  (async-execute-with-pool tp f)
-            ;; wait result or timeout to expire
-            [_ fail error :as  result] (deref value timeout [nil :timeout nil])]
-        ;; update stats
-        (swap! stats-atom update-stats result options)
-        ;; return result
-        result)
-      )
-    )
-  )
-
-
-
-
-
 (defn- should-allow-next-request?
-  [stats-atom {:keys [circuit-breaker circuit-closed?] :as options}]
+  [stats-atom]
   (as-> stats-atom $
-    (swap! $ (fn [stats]
-               (let [closed? (circuit-closed? options stats)]
+    (swap! $ (fn [{{:keys [circuit-closed?]} :config :as stats} ]
+               (let [closed? (circuit-closed? stats)]
                  (as-> stats $
                    ;; update status
                    (update $ :status (fn [os] (if closed? :closed :open)))
@@ -211,7 +175,7 @@
   (let [stats (circuit-breaker-stats options)
         result
         ;;  check if circuit is open or closed.
-        (if (should-allow-next-request? stats options)
+        (if (should-allow-next-request? stats)
           ;; retrieve or create thread-pool
           (-> (pool options)
               ;; executed in thread-pool and get a promise of result
@@ -227,6 +191,15 @@
     result))
 
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;     ---==| C I R C U I T   B R E A K E R   S T R A T E G I E S |==----     ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defn sum-counters
   ([] {:success 0, :error 0, :timeout 0, :rejected 0, :open 0})
   ([c1] c1)
@@ -239,7 +212,8 @@
 
 
 (defn closed?-by-failure-threshold
-  [{:keys [failure-threshold counters-buckets]} {:keys [status counters]}]
+  [{:keys [status counters]
+    {:keys [failure-threshold counters-buckets]} :config}]
   (let [ts (quot (System/currentTimeMillis) 1000)
         tot-counters (->> counters
                           ;; take only last 10 seconds
@@ -300,7 +274,7 @@
     )
 
   (as-> @cb-stats $
-    (:safely.test $)
+    (:test $)
     (deref $)
     (:counters $)
     )
