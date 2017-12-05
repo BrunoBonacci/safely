@@ -1,6 +1,6 @@
 (ns safely.test-utils
   (:require [midje.sweet :refer [after before fact with-state-changes]]
-            [safely.circuit-breaker :refer [cb-pools cb-stats]]
+            [safely.circuit-breaker :refer [cb-pools cb-state]]
             safely.core)
   (:import clojure.lang.ExceptionInfo
            java.util.concurrent.ThreadPoolExecutor))
@@ -80,7 +80,7 @@
     [(before :facts
              (do
                (reset! cb-pools {})
-               (reset! cb-stats {})))
+               (reset! cb-state {})))
      (after :facts
             (->> @cb-pools
                  (run! (fn [[k# ^ThreadPoolExecutor tp#]]

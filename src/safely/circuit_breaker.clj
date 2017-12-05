@@ -1,9 +1,17 @@
 (ns safely.circuit-breaker
-  (:require [safely.thread-pool :refer
-             [fixed-thread-pool async-execute-with-pool]]
-            [amalloy.ring-buffer :refer [ring-buffer]]
-            [clojure.tools.logging :as log]))
+  (:require [amalloy.ring-buffer :refer [ring-buffer]]
+            [defun :refer [defun]]
+            [safely.thread-pool :refer [async-execute-with-pool fixed-thread-pool]]))
 
+
+
+(defun now
+  ([]
+   (now :millis))
+  ([:seconds]
+   (quot (System/currentTimeMillis) 1000))
+  ([:millis]
+   (System/currentTimeMillis)))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -15,11 +23,11 @@
 
 (defn- update-samples
   ;;TODO: doc
-  [stats timestamp [_ fail error] {:keys [sample-size]}]
+  [{{:keys [sample-size]} :config :as state} timestamp [_ fail error]]
   ;; don't add requests which didn't enter the c.b.
   (if (= fail :circuit-open)
-    stats
-    (update stats
+    state
+    (update state
             :samples
             (fnil conj (ring-buffer sample-size))
             {:timestamp timestamp
@@ -30,8 +38,8 @@
 
 (defn- update-counters
   ;;TODO: doc
-  [stats timestamp [ok fail] {:keys [sample-size counters-buckets]}]
-  (update stats
+  [{{:keys [counters-buckets]} :config :as state} timestamp [ok fail]]
+  (update state
           :counters
           (fn [counters]
             (let [ts     (quot timestamp 1000)
@@ -66,11 +74,11 @@
 
 
 (defn- update-stats
-  [stats result opts]
-  (let [ts (System/currentTimeMillis)]
-    (-> stats
-        (update-samples  ts result opts)
-        (update-counters ts result opts)
+  [state result]
+  (let [ts (now)]
+    (-> state
+        (update-samples  ts result)
+        (update-counters ts result)
         (update :in-flight (fnil dec 0)))))
 
 
@@ -78,13 +86,100 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
-;;                          ---==| P O O L S |==----                          ;;
+;;     ---==| C I R C U I T   B R E A K E R   S T R A T E G I E S |==----     ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defn sum-counters
+  ([] {:success 0, :error 0, :timeout 0, :rejected 0, :open 0})
+  ([c1] c1)
+  ([{s1 :success, e1 :error, t1 :timeout, r1 :rejected, o1 :open}
+    {s2 :success, e2 :error, t2 :timeout, r2 :rejected, o2 :open}]
+   {:success (+ s1 s2), :error (+ e1 e2),
+    :timeout (+ t1 t2), :rejected (+ r1 r2),
+    :open (+ o1 o2)}))
+
+
+
+(defn counters-totals
+  ;; TODO doc
+  [counters last-n-seconds]
+  (->> counters
+       ;; take only last 10 seconds
+       (filter #(> (first %) (- (now :seconds) last-n-seconds)))
+       (map second)
+       (reduce sum-counters)))
+
+
+
+(defmulti evaluate-state (comp :circuit-breaker-strategy :config))
+
+
+
+(defmethod evaluate-state :failure-threshold
+  [{:keys [status counters]
+    {:keys [failure-threshold counters-buckets]} :config}]
+  (let [{:keys [success, error, timeout, rejected]} (counters-totals counters counters-buckets)
+        failures (+ error, timeout, rejected)
+        total    (+ success failures)]
+    (cond
+      ;; if no requests are counted then it is open
+      (== 0 total) true
+      ;; if the failures % is bigger than the threshold
+      ;; then trip the circuit open
+      (> (/ failures total) failure-threshold) false
+      ;; otherwise it is still closed.
+      :else true)))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;            ---==| A L L O W - T H I S - R E Q U E S T ? |==----            ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmulti allow-this-request?
+  (fn [{:keys [status]
+       {:keys [half-open-strategy]} :config}]
+    (if (= status :half-open)
+      [status half-open-strategy]
+      [status])))
+
+
+
+(defmethod allow-this-request? [:closed]
+  [_]
+  true)
+
+
+
+(defmethod allow-this-request? [:open]
+  [_]
+  false)
+
+
+
+(defmethod allow-this-request? [:half-open :linear-rampup]
+  [{:keys [last-status-change]
+    {:keys [ramp-up-period]} :config}]
+  (let [probability (/ (- (now) (or last-status-change 0)) ramp-up-period)]
+    (< (rand) probability)))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;             ---==| C B   P O O L S   A N D   S T A T E |==----             ;;
 ;;                                                                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (comment
-  ;; cb stats
+  ;; cb state
   {:cb-name1
    (atom
     {:status :closed
@@ -94,10 +189,16 @@
      :counters {1509199799 {:success 0, :error 1, :timeout 0, :rejected 0, :open 0}},
      :samples [{:timestamp 1, :failure nil :error nil}
                {:timestamp 2, :failure :timeout :error nil}]
+     :config {} ;; safely block config
      })}
   )
 
-(def cb-stats (atom {}))
+
+
+(def cb-state (atom {}))
+
+
+
 (def cb-pools (atom {}))
 
 
@@ -124,24 +225,24 @@
 
 
 
-(defn- circuit-breaker-stats
-  "It returns a circuit breaker stats atom with the key
+(defn- circuit-breaker-state
+  "It returns a circuit breaker state atom with the key
    `circuit-breaker` if it exists, if not it creates one
    and initializes it."
   [{:keys [circuit-breaker sample-size] :as options}]
-  (if-let [s (get @cb-stats (keyword circuit-breaker))]
+  (if-let [s (get @cb-state (keyword circuit-breaker))]
     s
-    (-> cb-stats
+    (-> cb-state
         (swap!
          update (keyword circuit-breaker)
-         (fn [stats]
+         (fn [state]
            ;; might be already set by another
            ;; concurrent thread.
-           (or stats
+           (or state
               ;; if it doesn't exists then create one and initialize it.
               (atom
                {:status :closed :in-flight 0
-                :last-status-change (System/currentTimeMillis)
+                :last-status-change (now)
                 :samples (ring-buffer sample-size)
                 :counters {}
                 :config options}))))
@@ -149,33 +250,82 @@
 
 
 
-(defn- should-allow-next-request?
-  [stats-atom]
-  (as-> stats-atom $
-    (swap! $ (fn [{{:keys [circuit-closed?]} :config :as stats} ]
-               (let [closed? (circuit-closed? stats)]
-                 (as-> stats $
-                   ;; update status
-                   (update $ :status (fn [os] (if closed? :closed :open)))
-                   ;; If the status changed then let's update the timestamp
-                   (if (not= (:status stats) (:status $))
-                     (assoc $ :last-status-change (System/currentTimeMillis))
-                     $)
-                   ;; if circuit is closed then increment the number of
-                   ;; in flight requests.
-                   (if closed?
-                     (update $ :in-flight (fnil inc 0))
-                     $)))))
-    (= :closed (:status $))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;              ---==| S T A T E   T R A N S I T I O N S |==----              ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+(defmulti  transition-state :status)
+
+
+
+(defmethod transition-state :closed
+  [state]
+  (let [closed? (evaluate-state state)]
+    (if closed?
+      state
+      (assoc state :status :open))))
+
+
+
+(defmethod transition-state :open
+  [{:keys [last-status-change]
+    {:keys [grace-period]} :config :as state} ]
+  (let [;; calculate the number of seconds elapsed
+        elapsed (- (now) (or last-status-change 0))]
+    (if (> elapsed grace-period)
+      (assoc state :status :half-open)
+      state)))
+
+
+
+(defmethod transition-state :half-open
+  [{:keys [last-status-change]
+    {:keys [ramp-up-seconds]} :config :as state} ]
+  (let [ ;; calculate the number of seconds elapsed
+        elapsed (quot (- (now) (or last-status-change 0)) 1000)
+        closed? (evaluate-state state)]
+    (cond
+      ;; if rampup time is completed and status is ok,
+      ;; then close the circuit
+      (and (> elapsed :ramp-up-seconds) closed?) (assoc state :status :closed)
+      ;; if requests are failing then reopen
+      (not closed?) (assoc state :status :open)
+      ;; otherwise just continue with half-open
+      :else state)))
+
+
+
+(defn- update-state
+  [state result]
+  (as-> state $
+    (update-stats $ result)
+    (transition-state $)
+    ;; If the status changed then let's update the timestamp
+    (if (not= (:status state) (:status $))
+      (assoc $ :last-status-change (now))
+      $)))
+
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                      ---==| E X E C U T I O N |==----                      ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (defn execute-with-circuit-breaker
   [f {:keys [circuit-breaker timeout] :as options}]
-  (let [stats (circuit-breaker-stats options)
+  (let [state  (circuit-breaker-state options)
+        state' (deref state)
         result
         ;;  check if circuit is open or closed.
-        (if (should-allow-next-request? stats)
+        (if (allow-this-request? state')
           ;; retrieve or create thread-pool
           (-> (pool options)
               ;; executed in thread-pool and get a promise of result
@@ -186,135 +336,6 @@
           ;; ELSE
           [nil :circuit-open nil])]
     ;; update stats
-    (swap! stats update-stats result options)
+    (swap! state update-state result)
     ;; return result
     result))
-
-
-
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;                                                                            ;;
-;;     ---==| C I R C U I T   B R E A K E R   S T R A T E G I E S |==----     ;;
-;;                                                                            ;;
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-
-
-(defn sum-counters
-  ([] {:success 0, :error 0, :timeout 0, :rejected 0, :open 0})
-  ([c1] c1)
-  ([{s1 :success, e1 :error, t1 :timeout, r1 :rejected, o1 :open}
-    {s2 :success, e2 :error, t2 :timeout, r2 :rejected, o2 :open}]
-   {:success (+ s1 s2), :error (+ e1 e2),
-    :timeout (+ t1 t2), :rejected (+ r1 r2),
-    :open (+ o1 o2)}))
-
-
-
-(defn closed?-by-failure-threshold
-  [{:keys [status counters]
-    {:keys [failure-threshold counters-buckets]} :config}]
-  (let [ts (quot (System/currentTimeMillis) 1000)
-        tot-counters (->> counters
-                          ;; take only last 10 seconds
-                          (filter #(> (first %) (- ts counters-buckets)))
-                          (map second)
-                          (reduce sum-counters))
-        {:keys [success, error, timeout, rejected]} tot-counters
-        failures (+ error, timeout, rejected)
-        total    (+ success failures)]
-    (cond
-      ;; if no requests are counted then it is open
-      (== 0 total) true
-      ;; if the failures % is bigger than the threshold
-      ;; then trip the circuit open
-      (> (/ failures total) failure-threshold) false
-      ;; otherwise it is still closed.
-      :else true)))
-
-
-(comment
-
-  ;; TODO: add function to evaluate samples
-  ;;       and open/close circuit
-  ;; TODO: refactor metrics
-  ;; TODO: add documentation
-  ;; TODO: cancel timed out tasks.
-
-  (def p (pool {:circuit-breaker :safely.test
-                :queue-size 5 :thread-pool-size 5
-                :sample-size 20 :counters-buckets 10}))
-
-  cb-pools
-
-
-  (def f (fn []
-           (println "long running job")
-           (Thread/sleep (rand-int 3000))
-           (if (< (rand) 1/3)
-             (throw (ex-info "boom" {}))
-             (rand-int 1000))))
-
-
-  (execute-with-circuit-breaker
-   f
-   {:circuit-breaker :safely.test
-    :thread-pool-size 10
-    :queue-size       5
-    :sample-size      100
-    :timeout          3000
-    :counters-buckets 10
-    :circuit-closed?  closed?-by-failure-threshold
-    :failure-threshold 0.5})
-
-
-  (as-> @cb-stats $
-    (:safely.test $)
-    (deref $)
-    )
-
-  (as-> @cb-stats $
-    (:test $)
-    (deref $)
-    (:counters $)
-    )
-
-  (as-> @cb-stats $
-    (:safely.test $)
-    (deref $)
-    (:counters $)
-    (map second $)
-    (reduce sum-counters $))
-
-
-
-  (->> @cb-stats
-       first
-       second
-       deref
-       :samples
-       (map (fn [x] (dissoc x :error))))
-
-  (keys @cb-stats)
-
-
-  (require '[safely.core])
-
-  (safely.core/safely
-   (println "long running job")
-   (Thread/sleep (rand-int 3000))
-   (if (< (rand) 1/3)
-     (throw (ex-info "boom" {}))
-     (rand-int 1000))
-   :on-error
-   :circuit-breaker :safely.test
-   :thread-pool-size 10
-   :queue-size       5
-   :sample-size      100
-   :timeout          2000
-   :counters-buckets 10
-   :circuit-closed?  closed?-by-failure-threshold
-   :failure-threshold 0.5)
-
-
-  )

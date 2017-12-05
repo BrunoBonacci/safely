@@ -1,9 +1,7 @@
 (ns safely.core
   (:require [clojure.tools.logging :as log]
             [defun :refer [defun]]
-            [safely.circuit-breaker
-             :refer
-             [closed?-by-failure-threshold execute-with-circuit-breaker]]
+            [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
             [samsara.trackit :refer [track-rate]]))
 
 ;;
@@ -28,13 +26,21 @@
    :retryable-error?  nil
 
    ;; Circuit-Breaker options
+   ;;:circuit-breaker :name
    :thread-pool-size  10
    :queue-size        5
    :sample-size       100
    :timeout           Long/MAX_VALUE
    :counters-buckets  10
-   :circuit-closed?   #'closed?-by-failure-threshold
+
+   :circuit-breaker-strategy :failure-threshold
    :failure-threshold 0.5
+
+   :half-open-strategy :linear-rampup
+   :ramp-up-period    5000
+
+   :grace-period      3000
+
    })
 
 
