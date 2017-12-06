@@ -4,18 +4,22 @@ Safely it's a Clojure library for handling exception in code executions.
 The library offers out of the box:
 
   * declarative exception handling
+  * declarative *circuit breaker* (in pure Clojure)
   * automatic retry policies
   * randomized delays retries
   * attenuation of self-emergent behaviour is distributed systems
   * sleepless-mode for testing
   * automatic and customizable logging of errors
   * automatic tracking of errors rate/count in monitoring tools
+  * automatic tracking of common performance metrics
 
 ## Usage
 
 Add the dependency into your `project.clj`.
 
 ``` clojure
+[com.brunobonacci/safely "0.5.0-alpha1"]
+;; last stable
 [com.brunobonacci/safely "0.3.0"]
 ```
 
@@ -40,7 +44,7 @@ Overall syntax
 (safely
 
  ;; code to execute
- (do (comment something))
+ (do (comment run something which can potentially blow))
 
  ;; exception handling
  :on-error
@@ -576,10 +580,6 @@ returns immediately (same code path, but no sleep).
 ## Development
 
 CI status: [![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=svg)](https://circleci.com/gh/BrunoBonacci/safely)
-
-## TODO
-
-  * Add custom handlers support
 
 ## License
 

@@ -6,6 +6,8 @@
 
 
 (defun now
+  "Returns the current system clock time as number of
+   seconds or milliseconds from EPOCH."
   ([]
    (now :millis))
   ([:seconds]
@@ -22,7 +24,20 @@
 
 
 (defn- update-samples
-  ;;TODO: doc
+  "Add the last request outcome into a ring-buffer of request samples.
+  When the buffer is full the oldest request will be dropped.  It
+  records the `:timestamp` of when the request was made, when an
+  exception is thrown `:error` captures the actual exception and
+  `:failure` is type of error which it can be one of:
+
+    - `:error` when an exception is raised inside the user's code
+    - `:timeout` when the request times out
+    - `:queue-full` when the request is rejected because the circuit
+                    breaker queue is full.
+    - `:circuit-open` when the request is rejected because the circuit
+                    breaker queue is open.
+    - `nil` for a successful request.
+  "
   [{{:keys [sample-size]} :config :as state} timestamp [_ fail error]]
   ;; don't add requests which didn't enter the c.b.
   (if (= fail :circuit-open)
@@ -37,7 +52,8 @@
 
 
 (defn- update-counters
-  ;;TODO: doc
+  "It updates the counters for the last x seconds incrementing
+   the counter for the given request outcome."
   [{{:keys [counters-buckets]} :config :as state} timestamp [ok fail]]
   (update state
           :counters
@@ -78,8 +94,7 @@
   (let [ts (now)]
     (-> state
         (update-samples  ts result)
-        (update-counters ts result)
-        (update :in-flight (fnil dec 0)))))
+        (update-counters ts result))))
 
 
 
@@ -103,7 +118,9 @@
 
 
 (defn counters-totals
-  ;; TODO doc
+  "Takes in input a map of counters as defined in the cb-state,
+   and the number of seconds to take into consideration and
+   it returns the total of each metric for the given time range."
   [counters last-n-seconds]
   (->> counters
        ;; take only last 10 seconds
@@ -113,7 +130,12 @@
 
 
 
-(defmulti evaluate-state (comp :circuit-breaker-strategy :config))
+(defmulti evaluate-state
+  "This function takes a circuit-breaker state value and depending
+  of `:circuit-breaker-strategy` in the `:config` it select a
+  different evaluation strategy to determine whether the circuit
+  breaker should be closed (`true`) or open (`false`)"
+  (comp :circuit-breaker-strategy :config))
 
 
 
@@ -124,8 +146,8 @@
         failures (+ error, timeout, rejected)
         total    (+ success failures)]
     (cond
-      ;; if no requests are counted then it is open
-      (== 0 total) true
+      ;; if no requests (or too few) are counted then it is closed
+      (< total 3) true
       ;; if the failures % is bigger than the threshold
       ;; then trip the circuit open
       (> (/ failures total) failure-threshold) false
@@ -183,22 +205,29 @@
   {:cb-name1
    (atom
     {:status :closed
-     :in-flight 0
      :last-status-change 1509199400
 
-     :counters {1509199799 {:success 0, :error 1, :timeout 0, :rejected 0, :open 0}},
-     :samples [{:timestamp 1, :failure nil :error nil}
-               {:timestamp 2, :failure :timeout :error nil}]
+     :counters {1509199799 {:success 1, :error 0, :timeout 1, :rejected 0, :open 0}},
+     :samples [{:timestamp 1509199799102, :failure nil :error nil}
+               {:timestamp 1509199799348, :failure :timeout :error nil}]
      :config {} ;; safely block config
      })}
   )
 
 
 
+(defn- circuit-breaker-state-init
+  [{:keys [sample-size] :as options}]
+  (atom
+   {:status             :closed
+    :last-status-change (now)
+    :samples            (ring-buffer sample-size)
+    :counters           {}
+    :config             options}))
+
+
+
 (def cb-state (atom {}))
-
-
-
 (def cb-pools (atom {}))
 
 
@@ -229,24 +258,20 @@
   "It returns a circuit breaker state atom with the key
    `circuit-breaker` if it exists, if not it creates one
    and initializes it."
-  [{:keys [circuit-breaker sample-size] :as options}]
-  (if-let [s (get @cb-state (keyword circuit-breaker))]
-    s
-    (-> cb-state
-        (swap!
-         update (keyword circuit-breaker)
-         (fn [state]
-           ;; might be already set by another
-           ;; concurrent thread.
-           (or state
-              ;; if it doesn't exists then create one and initialize it.
-              (atom
-               {:status :closed :in-flight 0
-                :last-status-change (now)
-                :samples (ring-buffer sample-size)
-                :counters {}
-                :config options}))))
-        (get (keyword circuit-breaker)))))
+  [{:keys [circuit-breaker] :as options}]
+  (let [circuit-breaker (keyword circuit-breaker)]
+    (if-let [s (get @cb-state circuit-breaker)]
+      s
+      (-> cb-state
+          (swap!
+           update circuit-breaker
+           (fn [state]
+             ;; might be already set by another
+             ;; concurrent thread.
+             (or state
+                ;; if it doesn't exists then create one and initialize it.
+                (circuit-breaker-state-init options))))
+          (get circuit-breaker)))))
 
 
 
@@ -320,7 +345,9 @@
 
 
 (defn execute-with-circuit-breaker
+  "Execute a thunk `f` in a circuit-breaker pool"
   [f {:keys [circuit-breaker timeout] :as options}]
+  {:pre [(not (nil? circuit-breaker))]}
   (let [state  (circuit-breaker-state options)
         state' (deref state)
         result
