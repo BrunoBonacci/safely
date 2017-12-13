@@ -108,3 +108,18 @@
                        (doall))]
      (deliver semaphore# :ok)
      (map (comp simplify-errors# deref) results#)))
+
+
+
+(defmacro simple-result
+  [& body]
+  `(let [simplify-errors# (fn [e#]
+                             (cond
+                               (not (instance? ExceptionInfo e#)) e#
+                               (nil? (:cause (ex-data (.getCause ^ExceptionInfo e#)))) e#
+                               :else (:cause (ex-data (.getCause ^ExceptionInfo e#)))))]
+      (simplify-errors#
+       (try
+         ~@body
+         (catch Throwable x#
+           x#)))))

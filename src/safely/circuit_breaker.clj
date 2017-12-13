@@ -140,7 +140,7 @@
 
 
 (defmethod evaluate-state :failure-threshold
-  [{:keys [status counters]
+  [{:keys [counters]
     {:keys [failure-threshold counters-buckets]} :config}]
   (let [{:keys [success, error, timeout, rejected]} (counters-totals counters counters-buckets)
         failures (+ error, timeout, rejected)
@@ -210,7 +210,7 @@
      :counters {1509199799 {:success 1, :error 0, :timeout 1, :rejected 0, :open 0}},
      :samples [{:timestamp 1509199799102, :failure nil :error nil}
                {:timestamp 1509199799348, :failure :timeout :error nil}]
-     :config {} ;; safely block config
+     :config {} ;; safely config
      })}
   )
 
@@ -229,7 +229,6 @@
 
 (def cb-state (atom {}))
 (def cb-pools (atom {}))
-
 
 
 (defn pool
@@ -292,7 +291,10 @@
   (let [closed? (evaluate-state state)]
     (if closed?
       state
-      (assoc state :status :open))))
+      (assoc state
+             :status   :open ;; change state
+             :counters {}    ;; reset counters
+             ))))
 
 
 
@@ -309,15 +311,15 @@
 
 (defmethod transition-state :half-open
   [{:keys [last-status-change]
-    {:keys [ramp-up-seconds]} :config :as state} ]
+    {:keys [ramp-up-period]} :config :as state} ]
   (let [ ;; calculate the number of seconds elapsed
-        elapsed (quot (- (now) (or last-status-change 0)) 1000)
+        elapsed (- (now) (or last-status-change 0))
         closed? (evaluate-state state)]
     (cond
       ;; if rampup time is completed and status is ok,
       ;; then close the circuit
-      (and (> elapsed :ramp-up-seconds) closed?) (assoc state :status :closed)
-      ;; if requests are failing then reopen
+      (and (> elapsed ramp-up-period) closed?) (assoc state :status :closed)
+      ;; if requests are failing then reopen (even if ramp-up is not completed)
       (not closed?) (assoc state :status :open)
       ;; otherwise just continue with half-open
       :else state)))

@@ -1,8 +1,8 @@
 (ns safely.circuit-breaker-test
-  (:require [safely.circuit-breaker :refer :all]
+  (:require [midje.sweet :refer [fact just anything]]
+            [safely.circuit-breaker :refer :all]
             [safely.core :refer :all]
             [safely.test-utils :refer :all]))
-
 
 (fact-with-test-pools
 
@@ -114,3 +114,106 @@
   frequencies) => {:circuit-open 5}
 
  )
+
+
+
+(fact-with-test-pools
+ "The circuit breaker should go form `:closed` to `:open` and
+ from `:open` to `:half-open` and finally from `:half-open`
+ to `:closed` when things get back to normal."
+
+ (let [ok   (fn [] :ok)
+       slow (fn [x] (sleep 100) x)
+
+       f (crash-boom-bang!
+          ;; :closed -> :open
+          #(boom) #(boom) #(boom)
+
+          ;; :open -> :half-open
+          #(ok) #(ok) #(ok)
+
+          ;; :half-open -> :closed
+          #(ok) #(ok) #(ok) #(ok) #(ok)
+
+          ;; :closed
+          #(ok) #(ok) #(ok)
+          )]
+
+   (->>
+    (for [i (range 14)]
+
+      (slow
+       [(some-> @cb-state :test deref :status)
+        (simple-result
+         (safely
+
+          (f)
+
+          :on-error
+          :log-stacktrace    false
+          :circuit-breaker   :test
+          :grace-period      300
+          :ramp-up-period    500
+          ))]))
+    doall
+    ))
+ => (just [[nil :boom]
+           [:closed :boom]
+           [:closed :boom]
+           [:open :circuit-open]
+           [:open :circuit-open]
+           [:open :circuit-open]
+           (just [:half-open anything])
+           (just [:half-open anything])
+           (just [:half-open anything])
+           (just [:half-open anything])
+           (just [:half-open anything])
+           [:closed :ok]
+           [:closed :ok]
+           [:closed :ok]
+           ]))
+
+
+
+(fact-with-test-pools
+ "The circuit breaker should go form `:closed` to `:open` and
+ from `:open` to `:half-open` and finally from `:half-open`
+ back to `:open` when requests keep failing"
+
+ (let [ok   (fn [] :ok)
+       slow (fn [x] (sleep 100) x)
+
+       f (crash-boom-bang!
+          ;; :closed -> :open
+          #(boom) #(boom) #(boom)
+
+          ;; :open -> :half-open
+          #(boom) #(boom) #(boom)
+
+          ;; :half-open -> :open
+          #(boom) #(boom) #(boom)
+
+          ;; :open
+          #(boom) #(boom) #(boom)
+          )]
+
+   (->>
+    (for [i (range 12)]
+
+      (slow
+       [(some-> @cb-state :test deref :status)
+        (simple-result
+         (safely
+
+          (f)
+
+          :on-error
+          :log-stacktrace    false
+          :circuit-breaker   :test
+          :grace-period      300
+          :ramp-up-period    300
+          ))]))
+    doall
+    last
+    ))
+ => [:open :circuit-open])
