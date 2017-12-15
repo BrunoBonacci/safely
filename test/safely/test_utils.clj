@@ -1,9 +1,7 @@
 (ns safely.test-utils
-  (:require [midje.sweet :refer [after before fact with-state-changes]]
-            [safely.circuit-breaker :refer [cb-pools cb-state]]
-            safely.core)
-  (:import clojure.lang.ExceptionInfo
-           java.util.concurrent.ThreadPoolExecutor))
+  (:require [midje.sweet :refer [after before fact provided with-state-changes]]
+            [safely.core :refer [shutdown-pools]])
+  (:import clojure.lang.ExceptionInfo))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
@@ -75,19 +73,35 @@
 
 (defmacro fact-with-test-pools
   [& body]
-  `(with-state-changes
+  `(let [cb-pools# (atom {})
+         cb-state# (atom {})]
+     (with-redefs [safely.circuit-breaker/pool
+                   (fn [cb-options#]
+                     (#'safely.circuit-breaker/-pool cb-pools# cb-options#))
 
-    [(before :facts
-             (do
-               (reset! cb-pools {})
-               (reset! cb-state {})))
-     (after :facts
-            (->> @cb-pools
-                 (run! (fn [[k# ^ThreadPoolExecutor tp#]]
-                         (println "shutting down pool:" k#)
-                         (.shutdownNow tp#)))))]
+                   safely.circuit-breaker/shutdown-pools
+                   (fn []
+                     (#'safely.circuit-breaker/-shutdown-pools cb-pools#))
 
-    (fact ~@body)))
+                   safely.circuit-breaker/circuit-breaker-state
+                   (fn [cb-options#]
+                     (#'safely.circuit-breaker/-circuit-breaker-state cb-state# cb-options#))
+
+                   safely.circuit-breaker/circuit-breaker-info
+                   (fn
+                     ([]
+                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state#))
+                     ([name#]
+                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state# name#)))]
+       (with-state-changes
+
+         [(before :facts
+                  (do
+                    (reset! cb-pools# {})
+                    (reset! cb-state# {})))
+          (after :facts (comment (safely.circuit-breaker/shutdown-pools)))]
+
+         (fact ~@body)))))
 
 
 

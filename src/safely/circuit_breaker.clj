@@ -1,7 +1,9 @@
 (ns safely.circuit-breaker
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [defun :refer [defun]]
-            [safely.thread-pool :refer [async-execute-with-pool fixed-thread-pool]]))
+            [safely.thread-pool :refer [async-execute-with-pool fixed-thread-pool]]
+            [clojure.tools.logging :as log])
+  (:import java.util.concurrent.ThreadPoolExecutor))
 
 
 
@@ -227,18 +229,14 @@
 
 
 
-(def cb-state (atom {}))
-(def cb-pools (atom {}))
-
-
-(defn pool
+(defn- -pool
   "It returns a circuit breaker pool with the key
    `circuit-breaker` if it exists, if not it creates one
    and initializes it."
-  [{:keys [circuit-breaker thread-pool-size queue-size]}]
-  (if-let [p (get @cb-pools (keyword circuit-breaker))]
+  [cb-pools-atom {:keys [circuit-breaker thread-pool-size queue-size]}]
+  (if-let [p (get @cb-pools-atom (keyword circuit-breaker))]
     p
-    (-> cb-pools
+    (-> cb-pools-atom
         (swap!
          update (keyword circuit-breaker)
          (fn [thread-pool]
@@ -253,15 +251,15 @@
 
 
 
-(defn- circuit-breaker-state
+(defn- -circuit-breaker-state
   "It returns a circuit breaker state atom with the key
    `circuit-breaker` if it exists, if not it creates one
    and initializes it."
-  [{:keys [circuit-breaker] :as options}]
+  [cb-state-atom {:keys [circuit-breaker] :as options}]
   (let [circuit-breaker (keyword circuit-breaker)]
-    (if-let [s (get @cb-state circuit-breaker)]
+    (if-let [s (get @cb-state-atom circuit-breaker)]
       s
-      (-> cb-state
+      (-> cb-state-atom
           (swap!
            update circuit-breaker
            (fn [state]
@@ -271,6 +269,86 @@
                 ;; if it doesn't exists then create one and initialize it.
                 (circuit-breaker-state-init options))))
           (get circuit-breaker)))))
+
+
+
+(defn- -shutdown-pools
+  "It shuts down, forcefully, all the circuit-breaker active pools.
+   If you provide a `pool-name` it will shutdown only the specified one."
+  ([cb-pools-atom]
+   (->> @cb-pools-atom
+        (run! (fn [[k# ^ThreadPoolExecutor tp#]]
+                (log/info "shutting down pool:" k#)
+                (.shutdownNow tp#)))))
+  ([cb-pools-atom pool-name]
+   (some-> (get @cb-pools-atom pool-name)
+           ((fn [[k# ^ThreadPoolExecutor tp#]]
+              (log/info "shutting down pool:" k#)
+              (.shutdownNow tp#))))))
+
+
+
+(defn- -circuit-breaker-info
+  "It returns a map with information regarding one circuit breaker
+   (if a name is specified) or all of them. the structure contains
+    the status, some counters, and sampled responses."
+  ([cb-state-atom]
+   (->> @cb-state-atom
+        (map (fn [[k v]] [k @v]))
+        (into {})))
+  ([cb-state-atom cb-name]
+   (some-> @cb-state-atom
+           (get cb-name)
+           deref)))
+
+
+;;
+;; `cb-state` and `cb-pools` contains respectively the state information
+;; for all circuit breakers as a map of atom so that independent calls
+;; to separate circuit breakers won't conflict and can be independently
+;; update their own state. This are meant to be private and not used
+;; by the final user. For this reason public function which are meant
+;; to manipulate these atoms are provided as closures over this data.
+;;
+(let [cb-state (atom {})
+      cb-pools (atom {})]
+
+  (defn- pool
+    "It returns a circuit breaker pool with the key
+   `circuit-breaker` if it exists, if not it creates one
+   and initializes it."
+    [cb-options]
+    (-pool cb-pools cb-options))
+
+
+
+  (defn- circuit-breaker-state
+    "It returns a circuit breaker state atom with the key
+   `circuit-breaker` if it exists, if not it creates one
+   and initializes it."
+    [cb-options]
+    (-circuit-breaker-state cb-state cb-options))
+
+
+  (defn shutdown-pools
+    "It shuts down, forcefully, all the circuit-breaker active pools.
+     If you provide a `pool-name` it will shutdown only the specified one."
+    ([]
+     (-shutdown-pools cb-pools))
+    ([pool-name]
+     (-shutdown-pools cb-pools pool-name)))
+
+
+  (defn circuit-breaker-info
+    "It returns a map with information regarding one circuit breaker
+    (if a name is specified) or all of them. the structure contains
+    the status, some counters, and sampled responses."
+    ([]
+     (-circuit-breaker-info cb-state))
+    ([circuit-breaker-name]
+     (-circuit-breaker-info cb-state circuit-breaker-name)))
+
+  )
 
 
 

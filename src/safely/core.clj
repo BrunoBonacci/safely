@@ -4,11 +4,6 @@
             [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
             [samsara.trackit :refer [track-rate]]))
 
-;;
-;; TODO:
-;; * handlers
-;; * code doc
-;;
 
 
 (def ^:dynamic *sleepless-mode* false)
@@ -461,3 +456,32 @@
         :log-ns *ns*
         :call-site ~call-site#
         ~@options))))
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;          ---==| C I R C U I T   B R E A K E R   T O O L S |==----          ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
+
+(defn shutdown-pools
+  "It shuts down, forcefully, all the circuit-breaker active pools.
+   If you provide a `pool-name` it will shutdown only the specified one."
+  ([]
+   (safely.circuit-breaker/shutdown-pools))
+  ([pool-name]
+   (safely.circuit-breaker/shutdown-pools pool-name)))
+
+
+
+(defn circuit-breaker-info
+  "It returns a map with information regarding one circuit breaker
+   (if a name is specified) or all of them. the structure contains
+    the status, some counters, and sampled responses."
+  ([]
+   (safely.circuit-breaker/circuit-breaker-info))
+  ([circuit-breaker-name]
+   (safely.circuit-breaker/circuit-breaker-info circuit-breaker-name)))

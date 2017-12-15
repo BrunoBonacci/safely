@@ -1,6 +1,5 @@
 (ns safely.circuit-breaker-test
   (:require [midje.sweet :refer [fact just anything]]
-            [safely.circuit-breaker :refer :all]
             [safely.core :refer :all]
             [safely.test-utils :refer :all]))
 
@@ -143,7 +142,7 @@
     (for [i (range 14)]
 
       (slow
-       [(some-> @cb-state :test deref :status)
+       [(:status (circuit-breaker-info :test))
         (simple-result
          (safely
 
@@ -201,7 +200,7 @@
     (for [i (range 12)]
 
       (slow
-       [(some-> @cb-state :test deref :status)
+       [(:status (circuit-breaker-info :test))
         (simple-result
          (safely
 
