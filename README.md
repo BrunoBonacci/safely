@@ -508,6 +508,30 @@ and will track the rate as well (how often it happens) which can be easily
 used as metric in a monitoring system.
 
 
+### Circuit breaker.
+
+(*WORK IN PROGRESS*)
+
+The circuit breaker functionality (introduced in v0.5.0) was
+popularised by (M. T. Nygard's book "Release
+It!")[https://pragprog.com/book/mnee/release-it].  There are already a
+good amount of open-source libraries which offer quite good
+implementation of circuit-breakers as defined by Nygard. The most
+popular it is (Hystrix)[https://github.com/Netflix/Hystrix] from
+Netflix.  However, Hystrix over the years became unnecessarily a huge
+library.  `safely` offers an implementation of the same ideas in a
+much simplified way and 100% Clojure (for JVM).
+
+If you want to know more about the general idea behind the circuit breaker
+I would recommend the book "Release It!". Here I'm going to describe how
+`safely` implementation works.
+
+Internally the circuit breaker is a state machine which looks like this:
+
+![circuit breaker state machine](/doc/images/circuit-breaker-sm.png)
+
+
+
 ### Macro vs function
 
 `safely` it's a Clojure macro which wraps your code with a try/catch and offers
