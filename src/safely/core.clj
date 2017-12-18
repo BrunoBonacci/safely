@@ -31,7 +31,7 @@
    :circuit-breaker-strategy :failure-threshold
    :failure-threshold 0.5
 
-   :half-open-strategy :linear-rampup
+   :half-open-strategy :linear-ramp-up
    :ramp-up-period    5000
 
    :grace-period      3000

@@ -577,11 +577,68 @@ Currently the following strategies are available to trip the circuit breaker:
     threshold. Very simple and effective.
 
 
+#### **`:open` state**
+
+If the state evaluation function decides to trip the circuit off
+because too many errors occurred, then the circuit breaker state
+machine goes into the `:open` state. In this state all incoming
+requests are rejected immediately with a `:circuit-open` error and the
+standard error path with retries is followed.
+
+This is useful to immediately reduce the load into the target system.
+The circuit stays open for a few seconds (according to
+`:grace-period`) and then the circuit automatically transitions to the
+`:half-open` state.
+
+#### **`:half-open` state**
+
+The purpose of this state is to assess whether the target system is
+back to normal before closing the circuit back and allow all the
+requests. So for this purpose the circuit breaker allows only a few
+requests to pass and it checks their outcome. If the system keep
+failing then the circuit goes back to the `:open` state, if the
+requests and now successful and the issue seems to be resolved then
+the circuit goes back to the `:closed` state.
+The same evaluation function used to trip the circuit open is used
+to evaluate whether now is back to normal.
+
+During the `:half-open` state, only a part of the incoming requests
+will be allowed. The number of the requests allowed depends on the
+`:half-open-strategy`.
+
+These are the currently supported strategies:
+
+  - **`:linear-ramp-up`**, it will ramp up the number of requests
+  allowed in the circuit breaker over time. The length of time is
+  configurable via `:ramp-up-period`. The system will go back to
+  closed only after the `:ramp-up-period` is elapsed, however if it
+  detects failures during the ramp up it will preemptively open the
+  circuit again.
+
+
+#### Circuit breaker functions
+
+##### `shutdown-pools`
+
+For every named circuit breaker, `safely` will create its own
+dedicated thread pool. If you wish to shutdown the pool
+programmatically then you can call the `shutdown-pools` function
+with a specific circuit breaker name or without parameters
+to shut all of them down.
+
+##### `circuit-breaker-info`
+
+If you want to access the info stored in the state machine
+for monitoring purposes then you can use the `circuit-breaker-info`
+function with a circuit breaker name for the state regarding the
+specific circuit breaker or without parameters for all.
+
 ### Macro vs function
 
-`safely` it's a Clojure macro which wraps your code with a try/catch and offers
-a elegant declarative approach to the error management. However in many cases
-macro can't be used easily for this reason we provide a function as well.
+`safely` it's a Clojure macro which wraps your code with a try/catch
+and offers a elegant declarative approach to the error
+management. However in many cases macro can't be used easily for this
+reason we provide a function as well.
 
 Everything you can do with the macro `safely` you can do with the
 function `safely-fn` which takes a **thunk** (function with zero

@@ -186,7 +186,7 @@
 
 
 
-(defmethod allow-this-request? [:half-open :linear-rampup]
+(defmethod allow-this-request? [:half-open :linear-ramp-up]
   [{:keys [last-status-change]
     {:keys [ramp-up-period]} :config}]
   (let [probability (/ (- (now) (or last-status-change 0)) ramp-up-period)]
