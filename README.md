@@ -522,14 +522,59 @@ Netflix.  However, Hystrix over the years became unnecessarily a huge
 library.  `safely` offers an implementation of the same ideas in a
 much simplified way and 100% Clojure (for JVM).
 
-If you want to know more about the general idea behind the circuit breaker
-I would recommend the book "Release It!". Here I'm going to describe how
-`safely` implementation works.
+If you want to know more about the general idea behind the circuit
+breaker I would recommend the book "Release It!". Here I'm going to
+describe how `safely` implementation works.
 
-Internally the circuit breaker is a state machine which looks like this:
+Internally the circuit breaker is a state machine which looks like
+this:
 
 ![circuit breaker state machine](/doc/images/circuit-breaker-sm.png)
 
+The state machine is initiated with the `:closed` state. Like an
+electrical circuit a _closed_ circuit it is a working circuit in which
+the current can flow through.
+
+#### **`:closed` state**
+
+In this state the circuit breaker is allowing to pass all the
+requests. So when a new request is made the circuit breaker will
+retrieve the dedicated thread pool associated with this request type
+and enqueue the new request. Once enqueued an available thread will
+pick the request and process it. When the request is completed then
+the circuit breaker will update its internal state capturing the
+outcome of each request. In this case one of the following things can
+happen:
+
+  - **the request is successful**, then the result from the processing
+    thread is returned to the caller.
+  - **the request processing fails with an error**, in this case the
+    error is propagated back to the caller and further retries could
+    be made depending whether they are configured and within the
+    limit. It the limit of retries `:max-retry` is reached then the
+    `:default` value is returned when provided or the error itself.
+  - **the request times out**, if the request has configured
+    `:timeout` and the processing isn't completed within this time, an
+    exception is raised and it follows the same path and the
+    processing error.
+  - **all threads and busy and no more requests can be enqueued**, in
+    this case the request is rejected (`:queue-full`) and the same
+    error handling path or retries is used.  The number of threads and
+    the queue size are configurable parameters.  More on how to size
+    them properly later.
+
+For any of the above outcomes the circuit breaker state machine updates
+a counter. Only counters for the last few seconds are kept and they are
+used by the state evaluation function to determine whether the circuit breaker
+should be tripped and move to the next state.
+
+Currently the following strategies are available to trip the circuit breaker:
+
+  - **:failure-threshold** which it looks at the counters and trips
+    the circuit open when a configurable threshold of failing requests
+    is reached. It will wait until at least 3 requests have been
+    processed in the last configured seconds before verifying the
+    threshold. Very simple and effective.
 
 
 ### Macro vs function
