@@ -31,10 +31,10 @@
    :circuit-breaker-strategy :failure-threshold
    :failure-threshold 0.5
 
+   :grace-period      3000
+
    :half-open-strategy :linear-ramp-up
    :ramp-up-period    5000
-
-   :grace-period      3000
 
    })
 
@@ -273,6 +273,77 @@
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
 
+  Circuit breaker options:
+     :circuit-breaker :operation-name
+        This options is required to activate the circuit breaker.
+        It identifies the specific operation the circuit breaker is
+        protecting. The name is used also to track resources and stats
+        for the operation.
+
+     :thread-pool-size  10
+        This is the size of the dedicated thread pool for this operation.
+        The default size should work fine for most of high volume operations.
+        Before changing this value please refer to the following link:
+        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        about how to correctly size circuit breaker thread pools.
+
+     :queue-size 5
+        It sets how big should be the queue for the circuit breaker
+        which it is in front of the thread pool. A good value for this
+        is about 30%-50% of the thread pool size. The queue should be used
+        only to cope with a small surge in requests. Be aware that the bigger
+        is the queue the more latency will be added processing your requests.
+        Before changing this value please refer to the following link:
+        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        about how to correctly size circuit breaker thread pools.
+
+     :sample-size 100
+        It sets how big it is the buffer that samples the most recent
+        requests. This it can be useful to see what happened to
+        the recent requests and decide whether to trip the circuit open.
+
+     :timeout 3000 (in millis) (default: not set)
+        It sets a timeout on each individual request sent in the circuit
+        breaker. It only works when used in conjunction with the circuit
+        breaker. If not set the caller will wait until the thread has
+        completed to process the request and returned a value.
+        When set, if the thread process the request before the timeout
+        expires the resulting value is returned to the caller, otherwise
+        a timeout exception is thrown.
+
+     :counters-buckets 10
+        The number of 1-second buckets with counters for the number of
+        requests succeeded, failed, timed out, etc. Only the most
+        recent requests buckets are kept.
+
+     :circuit-breaker-strategy :failure-threshold
+        This is the strategy used to trip the circuit breaker open.
+        Currently only this strategy is supported.
+
+     :failure-threshold 0.50 (50%)
+        Only used when :circuit-breaker-strategy is :failure-threshold.
+        It sets the threshold which when crossed, it will trip the
+        circuit open. It requires at least 3 requests in the counters
+        to evaluate the threshold. Otherwise it is closed by default.
+
+     :grace-period 3000 (in millis)
+        When the circuit is tripped open, it will reject all the requests
+        within the grace period. After this period is passed then it will
+        change state and go to the half-open state.
+
+     :half-open-strategy :linear-ramp-up
+        When the circuit moves from :open state to :half-open the
+        circuit breaker has to decide which requests to let through and
+        which reject immediately.  This is the strategy used to evaluate
+        which requests are to be tried in order to determine whether the
+        circuit can be closed again.  Currently only this strategy is
+        supported.
+
+     :ramp-up-period 5000 (in millis)
+        Only used when :half-open-strategy is :linear-ramp-up.
+        The :linear-ramp-up will pick randomly a increasing number
+        of requests and let them through and evaluate the result.
+
 
    Exceptions are logged automatically. Here some options to control logging
 
@@ -407,6 +478,78 @@
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
+
+  Circuit breaker options:
+     :circuit-breaker :operation-name
+        This options is required to activate the circuit breaker.
+        It identifies the specific operation the circuit breaker is
+        protecting. The name is used also to track resources and stats
+        for the operation.
+
+     :thread-pool-size  10
+        This is the size of the dedicated thread pool for this operation.
+        The default size should work fine for most of high volume operations.
+        Before changing this value please refer to the following link:
+        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        about how to correctly size circuit breaker thread pools.
+
+     :queue-size 5
+        It sets how big should be the queue for the circuit breaker
+        which it is in front of the thread pool. A good value for this
+        is about 30%-50% of the thread pool size. The queue should be used
+        only to cope with a small surge in requests. Be aware that the bigger
+        is the queue the more latency will be added processing your requests.
+        Before changing this value please refer to the following link:
+        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        about how to correctly size circuit breaker thread pools.
+
+     :sample-size 100
+        It sets how big it is the buffer that samples the most recent
+        requests. This it can be useful to see what happened to
+        the recent requests and decide whether to trip the circuit open.
+
+     :timeout 3000 (in millis) (default: not set)
+        It sets a timeout on each individual request sent in the circuit
+        breaker. It only works when used in conjunction with the circuit
+        breaker. If not set the caller will wait until the thread has
+        completed to process the request and returned a value.
+        When set, if the thread process the request before the timeout
+        expires the resulting value is returned to the caller, otherwise
+        a timeout exception is thrown.
+
+     :counters-buckets 10
+        The number of 1-second buckets with counters for the number of
+        requests succeeded, failed, timed out, etc. Only the most
+        recent requests buckets are kept.
+
+     :circuit-breaker-strategy :failure-threshold
+        This is the strategy used to trip the circuit breaker open.
+        Currently only this strategy is supported.
+
+     :failure-threshold 0.50 (50%)
+        Only used when :circuit-breaker-strategy is :failure-threshold.
+        It sets the threshold which when crossed, it will trip the
+        circuit open. It requires at least 3 requests in the counters
+        to evaluate the threshold. Otherwise it is closed by default.
+
+     :grace-period 3000 (in millis)
+        When the circuit is tripped open, it will reject all the requests
+        within the grace period. After this period is passed then it will
+        change state and go to the half-open state.
+
+     :half-open-strategy :linear-ramp-up
+        When the circuit moves from :open state to :half-open the
+        circuit breaker has to decide which requests to let through and
+        which reject immediately.  This is the strategy used to evaluate
+        which requests are to be tried in order to determine whether the
+        circuit can be closed again.  Currently only this strategy is
+        supported.
+
+     :ramp-up-period 5000 (in millis)
+        Only used when :half-open-strategy is :linear-ramp-up.
+        The :linear-ramp-up will pick randomly a increasing number
+        of requests and let them through and evaluate the result.
+
 
    Exceptions are logged automatically. Here some options to control logging
 

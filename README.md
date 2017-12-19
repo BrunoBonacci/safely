@@ -79,7 +79,51 @@ Overall syntax
  ;; truthy or falsey.
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
+ ;; to activate the circuit breaker just name the operation
+ :circuit-breaker :name
 
+ ;; the following options are only used in conjunction with
+ ;; a circuit breaker
+
+ ;; control the thread pool size for this operation
+ :thread-pool-size  10
+
+ ;; control the thread pool queue size for this operation
+ :queue-size        5
+
+ ;; the number of request's outcome to be sampled for analysis
+ :sample-size       100
+
+ ;; the number of milliseconds to wait before giving up
+ :timeout           30000 (millis, default wait forever)
+
+ ;; stats are collected about the outcome of the operations
+ ;; this parameter controls the number of 1-sec buckets
+ ;; to control.
+ :counters-buckets  10
+
+ ;; the strategy used to trip the circuit open
+ :circuit-breaker-strategy :failure-threshold
+
+ ;; the threshold of failing requests after which the circuit trips
+ ;; open. This is only used when
+ ;; :circuit-breaker-strategy is :failure-threshold
+ :failure-threshold 0.5
+
+ ;; when the circuit breaker is tripped open, no requests will
+ ;; be allowed for a given period.
+ :grace-period      3000 (millis)
+
+ ;; the strategy to decide which requests to let through
+ ;; for evaluation before closing the circuit again.
+ :half-open-strategy :linear-ramp-up
+
+ ;; the number of millis during which time an incrising number
+ ;; of requests will be let through for evaluation purposes.
+ :ramp-up-period    5000
+
+
+ ;; General options.
  ;; customize your error message for logs
  :message "a custom error message"
 
