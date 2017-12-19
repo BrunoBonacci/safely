@@ -521,8 +521,8 @@ library.  `safely` offers an implementation of the same ideas in a
 much simplified way and 100% Clojure (for JVM).
 
 If you want to know more about the general idea behind the circuit
-breaker I would recommend the book "Release It!". Here I'm going to
-describe how `safely` implementation works.
+breaker I would recommend the book "Release It!" mentioned above. Here
+I'm going to describe how `safely` implementation works.
 
 Internally the circuit breaker is a state machine which looks like
 this:
@@ -536,7 +536,7 @@ the current can flow through.
 #### **`:closed` state**
 
 In this state the circuit breaker is allowing to pass all the
-requests. So when a new request is made the circuit breaker will
+requests. So when a new request is issued, the circuit breaker will
 retrieve the dedicated thread pool associated with this request type
 and enqueue the new request. Once enqueued an available thread will
 pick the request and process it. When the request is completed then
@@ -549,7 +549,7 @@ happen:
   - **the request processing fails with an error**, in this case the
     error is propagated back to the caller and further retries could
     be made depending whether they are configured and within the
-    limit. It the limit of retries `:max-retry` is reached then the
+    limit. If the limit of retries in `:max-retry` is reached then the
     `:default` value is returned when provided or the error itself.
   - **the request times out**, if the request has configured
     `:timeout` and the processing isn't completed within this time, an
@@ -571,8 +571,8 @@ Currently the following strategies are available to trip the circuit breaker:
   - **:failure-threshold** which it looks at the counters and trips
     the circuit open when a configurable threshold of failing requests
     is reached. It will wait until at least 3 requests have been
-    processed in the last configured seconds before verifying the
-    threshold. Very simple and effective.
+    processed before verifying the threshold. Very simple and
+    effective.
 
 
 #### **`:open` state**
