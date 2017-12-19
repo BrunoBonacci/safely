@@ -80,7 +80,7 @@ Overall syntax
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
  ;; to activate the circuit breaker just name the operation
- :circuit-breaker :name
+ :circuit-breaker :operation-name
 
  ;; the following options are only used in conjunction with
  ;; a circuit breaker
