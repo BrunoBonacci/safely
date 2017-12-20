@@ -781,6 +781,6 @@ CI status: [![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=sv
 
 ## License
 
-Copyright © 2015-2017 Bruno Bonacci
+Copyright © 2015-2018 Bruno Bonacci
 
 Distributed under the Apache License v 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
