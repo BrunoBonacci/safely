@@ -278,7 +278,10 @@
         This options is required to activate the circuit breaker.
         It identifies the specific operation the circuit breaker is
         protecting. The name is used also to track resources and stats
-        for the operation.
+        for the operation. NOTE: don't use high cardinality values or
+        randomly generate values to avoid the risk of running out of
+        memory. Name the circuit breaker after the operation it is
+        trying to accomplish.
 
      :thread-pool-size  10
         This is the size of the dedicated thread pool for this operation.
@@ -484,7 +487,10 @@
         This options is required to activate the circuit breaker.
         It identifies the specific operation the circuit breaker is
         protecting. The name is used also to track resources and stats
-        for the operation.
+        for the operation. NOTE: don't use high cardinality values or
+        randomly generate values to avoid the risk of running out of
+        memory. Name the circuit breaker after the operation it is
+        trying to accomplish.
 
      :thread-pool-size  10
         This is the size of the dedicated thread pool for this operation.
