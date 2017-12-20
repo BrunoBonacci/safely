@@ -705,6 +705,10 @@ for monitoring purposes then you can use the `circuit-breaker-info`
 function with a circuit breaker name for the state regarding the
 specific circuit breaker or without parameters for all.
 
+#### How to size the thread pools
+
+TODO:
+
 ### Macro vs function
 
 `safely` it's a Clojure macro which wraps your code with a try/catch
