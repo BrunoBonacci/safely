@@ -658,6 +658,36 @@ These are the currently supported strategies:
   circuit again.
 
 
+#### How to use the circuit-breaker
+
+To activate the circuit breaker function just add the `:circuit-breaker`
+option if your `safely` options:
+
+```Clojure
+;; activating circuit breaker
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  ;; give a name to the circuit-breaker
+  :circuit-breaker :fetch-active-users
+  ;; optionally set a timeout for this operation (millis)
+  :timeout 30000)
+```
+
+That's it!. `safely` in the background will create a thread pool named
+`:fetch-active-users` which will be in charge of processing the
+requests. You can use the circuit breaker in conjunction with all
+other safely options such as retry strategies, log and tracing.
+
+_**NOTE**: for every unique value passed to `:circuit-breaker` a
+number of resources need to be created in the system, namely the
+thread-pool and the circuit-breaker state machine. Therefore you must
+ensure that the values passed to the `:circuit-breaker` options are
+**not randomly generated or high cardinality** to avoid the risk of
+running out of memory in your system. Best practice is to name the
+circuit breaker after the operation that it is trying to accomplish._
+
+
 #### Circuit breaker functions
 
 ##### `shutdown-pools`
