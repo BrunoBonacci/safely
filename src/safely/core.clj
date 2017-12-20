@@ -287,7 +287,7 @@
         This is the size of the dedicated thread pool for this operation.
         The default size should work fine for most of high volume operations.
         Before changing this value please refer to the following link:
-        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        https://github.com/BrunoBonacci/safely#how-to-size-the-thread-pool
         about how to correctly size circuit breaker thread pools.
 
      :queue-size 5
@@ -297,7 +297,7 @@
         only to cope with a small surge in requests. Be aware that the bigger
         is the queue the more latency will be added processing your requests.
         Before changing this value please refer to the following link:
-        https://github.com/BrunoBonacci/safely#sizing-thread-pools
+        https://github.com/BrunoBonacci/safely#how-to-size-the-thread-pool
         about how to correctly size circuit breaker thread pools.
 
      :sample-size 100

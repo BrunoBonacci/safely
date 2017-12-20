@@ -705,9 +705,64 @@ for monitoring purposes then you can use the `circuit-breaker-info`
 function with a circuit breaker name for the state regarding the
 specific circuit breaker or without parameters for all.
 
-#### How to size the thread pools
+#### How to size the thread pool
 
-TODO:
+You might think that a thread pool of 10 is very small for your
+system, and you might be tempted to increase this number by one order
+of magnitude.  Although some times this is the correct thing to do,
+most of the time it won't be. The defaults are already set for large
+volume systems so most of you won't need to change the size of the
+thread pool and/or the queue length.  However if you think you should
+change these values for your system I would recommend to use the
+[Litlle's Law](http://web.mit.edu/~sgraves/www/papers/Little's%20Law-Published.pdf)
+(from Queueing Theory) to choose the correct size.
+
+The _Little's Law_ says that the long term average number of items `L`
+in your system is equal to the average arrival rate `λ` multiplied by
+the long term average time `W` required to process that item, therefore:
+
+![Little's Law](/doc/images/LittleLaw.png)
+
+The interesting property about the _Little's Law_ is that it applies
+to the whole system as well as its individual parts.  This means that
+this law will apply to your system as a whole, meaning all the
+instances of your system in the cluster, as well as the individual
+instances. Moreover, if your single instance has two possible paths
+with two different probabilities, it will apply to these sub-parts as
+well with the parameters adjusted accordingly.
+
+For example if you have a system which processes 5000 requests/second
+as a whole, and you have 15 instances to serve these requests,
+and each requests takes on average 25 milliseconds, then we can reason
+as follow:
+
+  * `λ = 5000 rq/s`
+  * `W = 25 millis -> 0.025s`
+  * then we can deduce that `L` for the whole system is going to be:
+  * `L = λW -> 5000 rq/s * 0.025 s -> L = 125`
+  * So it means that the whole system will have a average of 125
+    concurrent requests when processing 5000 rq/s.
+  * Since every instance follow the Little's law as well and
+    since all the instances have typically the same probability
+    to get a request (via a load balancer), then it is safe
+    to assume that every instance will have the same share of traffic.
+    Since we ha *15 instances* then we can say that:
+  * `Li = L / 15 -> 125 / 15 -> Li = 8.34` where `Li` is the load of a
+    single instance.
+
+As you can see although your system as a whole processes a lot of
+requests per seconds, the individual instance _concurrent load `Li`_
+it will be within the range of the thread pool. If we size the thread
+pool a bit larger to cope with requests bursts and we add a small
+queue typically 30%-50% of the thread pool size we can ensure that
+occasional hiccups and bursts of requests are handled properly without
+causing the circuit breaker to trip over.
+
+I hope this small guide helps you to correctly size your system.
+Anyway, always use measurements (tracking, monitoring) to compute
+the right size and verify you changes according to your assumptions
+to see if the change had the effect you hoped.
+
 
 ### Macro vs function
 
