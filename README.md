@@ -95,7 +95,7 @@ Overall syntax
  :sample-size       100
 
  ;; the number of milliseconds to wait before giving up
- :timeout           30000 (millis, default wait forever)
+ :timeout           30000 ;; (millis, default wait forever)
 
  ;; stats are collected about the outcome of the operations
  ;; this parameter controls the number of 1-sec buckets
@@ -112,7 +112,7 @@ Overall syntax
 
  ;; when the circuit breaker is tripped open, no requests will
  ;; be allowed for a given period.
- :grace-period      3000 (millis)
+ :grace-period      3000 ;; millis
 
  ;; the strategy to decide which requests to let through
  ;; for evaluation before closing the circuit again.
