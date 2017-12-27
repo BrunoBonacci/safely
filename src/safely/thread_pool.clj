@@ -5,7 +5,6 @@
             ExecutorService RejectedExecutionException]))
 
 
-;; TODO: default uncaught-exception-handler
 ;; TODO: thread-groups and thread priority?
 
 

@@ -154,8 +154,18 @@
 
 
 
+(defn- exception
+  "Returns an exception originated from the circuit breaker and with
+  the :cause correctly populated."
+  [circuit-breaker msg cause & {:as data}]
+  (ex-info msg (assoc data :cause cause
+                      :origin ::circuit-breaker
+                      :circuit-breaker circuit-breaker)))
+
+
+
 (defn- normalize-failure
-  [[value failure error]]
+  [{:keys [circuit-breaker] :as cb-opts} [value failure error]]
   (cond
     ;; successful execution
     (nil? failure)            [value]
@@ -164,14 +174,13 @@
     (= :error failure)        [nil error]
 
     ;; queue-full
-    (= :queue-full failure)   [nil (ex-info "queue-full" {:cause :queue-full})] ;;TODO: fixit
+    (= :queue-full failure)   [nil (exception circuit-breaker "The circuit breaker queue is full" :queue-full)]
 
     ;; timeout
-    (= :timeout failure)      [nil (ex-info "timeout" {:cause :timeout})] ;;TODO: fixit
+    (= :timeout failure)      [nil (exception circuit-breaker "timeout" :timeout)]
 
     ;; circuit-open
-    (= :circuit-open failure) [nil (ex-info "circuit-open" {:cause :circuit-open})] ;;TODO: fixit
-    ))
+    (= :circuit-open failure) [nil (exception circuit-breaker "circuit-open" :circuit-open)]))
 
 
 
@@ -183,11 +192,11 @@
 ;; - :timeout 3000
 ;; - :counters-buckets 10
 (defn- make-attempt-with-circuit-breaker
-  [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts}
-   f]
-  (let [[value error :as result] (->
+  [{:keys [message log-ns log-errors log-level log-stacktrace call-site
+           circuit-breaker] :as opts} f]
+  (let [[value error :as result] (->>
                                   (execute-with-circuit-breaker f opts)
-                                  normalize-failure)]
+                                  (normalize-failure circuit-breaker))]
     ;; log error if required
     (when (and error log-errors)
       (log/log log-ns log-level (when log-stacktrace error) (str message " @ " call-site)))
