@@ -33,7 +33,21 @@ Require the namespace:
   (:require [safely.core :refer [safely]]))
 ```
 
-Overall syntax
+``` clojure
+;; wrap your critical calls
+;; to external systems (api, db, etc)
+;; into a `safely` block, and define
+;; what to do in case of failures.
+
+(safely
+  (api-call "other-system")
+
+  :on-error
+  :max-retry 5
+  :default   {:some :value})
+```
+
+This is a quick ref-card of all possible configurable options:
 
 ``` clojure
 
