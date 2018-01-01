@@ -33,6 +33,8 @@ Require the namespace:
   (:require [safely.core :refer [safely]]))
 ```
 
+Then, make a call to a remote system:
+
 ``` clojure
 ;; wrap your critical calls
 ;; to external systems (api, db, etc)
