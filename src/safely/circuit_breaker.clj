@@ -1,11 +1,11 @@
 (ns safely.circuit-breaker
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
+            [clojure.tools.logging :as log]
             [defun :refer [defun]]
-            [safely.thread-pool :refer [async-execute-with-pool fixed-thread-pool]]
-            [clojure.tools.logging :as log])
+            [safely.thread-pool
+             :refer [async-execute-with-pool
+                     fixed-thread-pool running-task-count]])
   (:import java.util.concurrent.ThreadPoolExecutor))
-
-
 
 (defun now
   "Returns the current system clock time as number of
@@ -209,6 +209,9 @@
     {:status :closed
      :last-status-change 1509199400
 
+     ;; injected values
+     :in-flight 3
+
      :counters {1509199799 {:success 1, :error 0, :timeout 1, :rejected 0, :open 0}},
      :samples [{:timestamp 1509199799102, :failure nil :error nil}
                {:timestamp 1509199799348, :failure :timeout :error nil}]
@@ -292,14 +295,19 @@
   "It returns a map with information regarding one circuit breaker
    (if a name is specified) or all of them. the structure contains
     the status, some counters, and sampled responses."
-  ([cb-state-atom]
-   (->> @cb-state-atom
-        (map (fn [[k v]] [k @v]))
+  ([cb-state-atom cb-pool-atom]
+   (->> (merge-with vector @cb-state-atom @cb-pool-atom)
+        (map (fn [[k [v1 v2]]]
+               ;; inject the in-flight requests
+               [k (assoc @v1 :in-flight
+                         (running-task-count v2))]))
         (into {})))
-  ([cb-state-atom cb-name]
-   (some-> @cb-state-atom
-           (get cb-name)
-           deref)))
+  ([cb-state-atom cb-pool-atom cb-name]
+   (let [^ThreadPoolExecutor tp (get @cb-pool-atom cb-name)]
+     (some-> @cb-state-atom
+             (get cb-name)
+             deref
+             (assoc :in-flight (running-task-count tp))))))
 
 
 ;;
@@ -344,9 +352,9 @@
     (if a name is specified) or all of them. the structure contains
     the status, some counters, and sampled responses."
     ([]
-     (-circuit-breaker-info cb-state))
+     (-circuit-breaker-info cb-state cb-pools))
     ([circuit-breaker-name]
-     (-circuit-breaker-info cb-state circuit-breaker-name)))
+     (-circuit-breaker-info cb-state cb-pools circuit-breaker-name)))
 
   )
 

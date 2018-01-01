@@ -90,9 +90,9 @@
                    safely.circuit-breaker/circuit-breaker-info
                    (fn
                      ([]
-                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state#))
+                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state# cb-pools#))
                      ([name#]
-                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state# name#)))]
+                      (#'safely.circuit-breaker/-circuit-breaker-info cb-state# cb-pools# name#)))]
        (with-state-changes
 
          [(before :facts

@@ -83,3 +83,12 @@
   [^ExecutorService pool timeout thunk]
   (let [value (async-execute-with-pool pool thunk)]
     (deref value timeout [nil :timeout nil])))
+
+
+
+(defn running-task-count
+  "Returns the approximate count of in flight tasks"
+  [^ThreadPoolExecutor tp]
+  (let [completed (.getCompletedTaskCount tp)
+        scheduled (.getTaskCount tp)]
+    (-  scheduled completed)))
