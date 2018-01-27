@@ -1,10 +1,17 @@
 (ns safely.examples.etl-load.core
-  (:require [safely.examples.etl-load.util :as u]
-            [amazonica.aws.dynamodbv2 :as dyn]
-            [cheshire.core :as json]
-            [clojure.core.reducers :as r]
-            [iota]
-            [safely.core :refer [safely]]))
+  (:require
+   ;; utilities to create/delete table
+   [safely.examples.etl-load.util :as u]
+   ;; AWS clojure client
+   [amazonica.aws.dynamodbv2 :as dyn]
+   ;; JSON parser
+   [cheshire.core :as json]
+   ;; Clojure parallel reduers
+   [clojure.core.reducers :as r]
+   ;; utility for working with large files
+   [iota]
+   ;; Safely retry errors.
+   [safely.core :refer [safely]]))
 
 
 (def DEFAUL-CFG
@@ -17,6 +24,8 @@
 
 
 (defn save-record
+  "takes a single record as a Clojure map and stores it into a dynamo-db
+  table. In case of failures it retries until successful completion."
   [{:keys [table-name region] :as cfg} rec]
   (safely
 
@@ -40,9 +49,9 @@
   (u/create-table-if-not-exists cfg)
   ;; load files
   (let [recs
-        (->> (iota/seq file)
-             (r/map #(json/parse-string % true))
-             (r/map (partial save-record cfg))
-             (r/map (constantly 1))
-             (r/fold + +))]
+        (->> (iota/seq file)                      ; read the file as a seq of lines
+             (r/map #(json/parse-string % true))  ; parse each line as JSON
+             (r/map (partial save-record cfg))          ; store each record into DynamoDB
+             (r/map (constantly 1))               ; count the number of records added
+             (r/fold + +))]                       ; reduce and combine counts
     (println "records loaded:" recs)))
