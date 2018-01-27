@@ -174,7 +174,7 @@ All the code for this example can be found on
 [GitHub](https://github.com/BrunoBonacci/safely/tree/master/examples/etl-load).
 This example was ran on AWS using a single `m4.2xlarge` instance.
 
-## Using Hadoop or Spark.
+## Using `safely` with Hadoop or Spark.
 
 *Safely is very suited to be used with Hadoop and Spark*. The same
 adaptive behaviour it is exhibited also on these distributed platform

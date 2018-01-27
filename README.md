@@ -159,6 +159,19 @@ This is a quick ref-card of all possible configurable options:
 
 ```
 
+## Examples and Case studies
+
+Here a collection of examples and case studies:
+
+  * Use safely with AWS apis
+    * [ETL-load job](./examples/etl-load/doc/etl-load-example.md) -
+      See how the use of `safely` can greatly simplify your ETL jobs
+      and make sure that you are fully utilising your database
+      resources while being tolerant for transitory failures. It is
+      also demonstrated that the exponential backoff exhibits great
+      adaptive behaviours. The example is valid for Hadoop and Spark
+      ETL jobs as well.
+
 
 ## Exception handling
 
