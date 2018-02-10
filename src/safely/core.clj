@@ -2,8 +2,15 @@
   (:require [clojure.tools.logging :as log]
             [defun :refer [defun]]
             [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
-            [samsara.trackit :refer [track-rate]]))
+            [samsara.trackit :refer [track-rate track-time]]))
 
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;                       ---==| D E A F U L T S |==----                       ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
 (def ^:dynamic *sleepless-mode* false)
@@ -40,11 +47,44 @@
 
 
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;              ---==| U T I L I T Y   F U N C T I O N S |==----              ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+
 (defn- apply-defaults [cfg defaults]
   (-> (merge defaults cfg)
       (update :max-retry (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
 
+
+(defmacro outer-tracker
+  "utility macro to track execution time a tracker name is provided"
+  {:style/indent 1}
+  [name & body]
+  `(let [name# ~name]
+     (if name#
+       (try (track-time (str name# ".outer") ~@body)
+            (catch Throwable x#
+              (track-rate (str name# ".outer.errors"))
+              (throw x#)))
+       (do ~@body))))
+
+
+
+(defmacro inner-tracker
+  "utility macro to track execution time a tracker name is provided"
+  {:style/indent 1}
+  [name & body]
+  `(let [name# ~name]
+     (if name#
+       (try (track-time (str name# ".inner") ~@body)
+            (catch Throwable x#
+              (track-rate (str name# ".inner.errors"))
+              (throw x#)))
+       (do ~@body))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -154,6 +194,34 @@
 
 
 
+(defn- track-error-type
+  [{:keys [circuit-breaker track-as] :as cb-opts} [value failure error :as outcome]]
+  (if-not track-as
+    outcome
+    (let [track-prefix (str track-as ".circuit_breaker." (name circuit-breaker))]
+      (if (nil? failure)
+        ;; successful execution
+        (track-rate (str track-prefix ".success"))
+
+        ;; track all errors
+        (track-rate (str track-prefix ".errors.all")))
+
+      (cond
+        ;; exception thrown
+        (= :error failure)        (track-rate (str track-prefix ".errors.execution"))
+
+        ;; queue-full
+        (= :queue-full failure)   (track-rate (str track-prefix ".errors.queue_full"))
+
+        ;; timeout
+        (= :timeout failure)      (track-rate (str track-prefix ".errors.timeout"))
+
+        ;; circuit-open
+        (= :circuit-open failure) (track-rate (str track-prefix ".errors.circuit_open")))
+      outcome)))
+
+
+
 (defn- exception
   "Returns an exception originated from the circuit breaker and with
   the :cause correctly populated."
@@ -165,7 +233,7 @@
 
 
 (defn- normalize-failure
-  [{:keys [circuit-breaker] :as cb-opts} [value failure error]]
+  [{:keys [circuit-breaker] :as opts} [value failure error]]
   (cond
     ;; successful execution
     (nil? failure)            [value]
@@ -184,19 +252,13 @@
 
 
 
-;; new options:
-;; - :circuit-breaker :name.of.the.call
-;; - :thread-pool-size
-;; - :queue-size
-;; - :sample-size 10
-;; - :timeout 3000
-;; - :counters-buckets 10
+
 (defn- make-attempt-with-circuit-breaker
-  [{:keys [message log-ns log-errors log-level log-stacktrace call-site
-           circuit-breaker] :as opts} f]
+  [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts} f]
   (let [[value error :as result] (->>
                                   (execute-with-circuit-breaker f opts)
-                                  (normalize-failure circuit-breaker))]
+                                  (track-error-type opts)
+                                  (normalize-failure opts))]
     ;; log error if required
     (when (and error log-errors)
       (log/log log-ns log-level (when log-stacktrace error) (str message " @ " call-site)))
@@ -392,41 +454,40 @@
   "
   [f & {:as spec}]
   (let [;; applying defaults
-        spec' (apply-defaults spec defaults)
+        spec'   (apply-defaults spec defaults)
         ;; lazy execution as only needed in case of error
-        delayer (delay (apply sleeper (:retry-delay spec')))]
-    (loop [{:keys [message default max-retry attempt track-as
-                   retryable-error?] :as data} spec']
-      (let [[result ex] (make-attempt spec' f)]
-        ;; check execution outcome
-        (if (nil? ex)
-          ;; it ran successfully
-          result
+        delayer (delay (apply sleeper (:retry-delay spec')))
+        ;; instrument inner call
+        f       (fn [] (inner-tracker (:track-as spec') (f)))]
+    (outer-tracker (:track-as spec')
+     (loop [{:keys [message default max-retry attempt :track-as
+                    retryable-error?] :as data} spec']
+       (let [[result ex] (make-attempt spec' f)]
+         ;; check execution outcome
+         (if (nil? ex)
+           ;; it ran successfully
+           result
 
-          ;; else: we have an error
-          (do
-            ;; track the rate/count of errors
-            (when (and track-as (not (nil? ex)))
-              (track-rate track-as))
-            ;; handle the outcome
-            (cond
-              ;; check whether this is a retryable error
-              (and retryable-error? (not (retryable-error? ex)))
-              (throw ex)
+           ;; else: we have an error
+           ;; and we need to handle the outcome
+           (cond
+             ;; check whether this is a retryable error
+             (and retryable-error? (not (retryable-error? ex)))
+             (throw ex)
 
-              ;; we reached the max retry but we have a default
-              (and (not= ::undefined default) (>= attempt max-retry))
-              default
+             ;; we reached the max retry but we have a default
+             (and (not= ::undefined default) (>= attempt max-retry))
+             default
 
-              ;; we got error and reached the max retry
-              (and (= ::undefined default) (>= attempt max-retry))
-              (throw (ex-info message data ex))
+             ;; we got error and reached the max retry
+             (and (= ::undefined default) (>= attempt max-retry))
+             (throw (ex-info message data ex))
 
-              ;; retry
-              :else
-              (do
-                (@delayer)
-                (recur (update data :attempt inc))))))))))
+             ;; retry
+             :else
+             (do
+               (@delayer)
+               (recur (update data :attempt inc))))))))))
 
 
 
