@@ -18,8 +18,8 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ``` clojure
-[com.brunobonacci/safely "0.5.0-alpha2"]
-;; last stable
+[com.brunobonacci/safely "0.5.0-alpha3"]
+;; last stable (no circuit-breaker)
 [com.brunobonacci/safely "0.3.0"]
 ```
 
@@ -557,15 +557,16 @@ particular section protected by safely is running into errors.
 To do so all you need to do is to give a name to the section you are
 protecting with safely with:
 
-* `:track-as` "myproject.errors.mymodule.myaction"
+* `:track-as "myproject.mymodule.myaction"`
   Will use the given string as name for the metric. Use names which
   will be clearly specifying the which part of your code is failing
-  for example: "app.errors.db.writes" and
-  "app.errors.services.account.fetchuser" clearly specify which action
+  for example: "app.db.writes" and
+  "app.services.account.fetchuser" clearly specify which action
   if currently failing. The tracking is done via Samsara/TrackIt!
   (see: https://github.com/samsara/trackit)
 
 For example:
+
 ```Clojure
 ;; Automatic retry with random-range
 (safely
@@ -573,13 +574,12 @@ For example:
   :on-error
   :max-retry 3
   :retry-delay [:random-range :min 2000 :max 5000]
-  :track-as "myapp.errors.services.users.fetch-active")
+  :track-as "myapp.services.users.fetch-active")
 ```
 
-This will track the number of failures of while fetching the active users,
-and will track the rate as well (how often it happens) which can be easily
-used as metric in a monitoring system.
-
+This will track a number of interesting metrics about this single
+block and publish them to a variety of monitoring systems. For more
+information you can see the [tracking](./doc/tracking.md) page.
 
 ### Circuit breaker.
 
