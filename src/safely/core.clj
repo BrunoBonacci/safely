@@ -189,7 +189,8 @@
     [(f)]
     (catch Throwable x
       (when log-errors
-        (log/log log-ns log-level (when log-stacktrace x) (str message " @ " call-site)))
+        (log/log log-ns log-level (when log-stacktrace x)
+                 (str message " @ " call-site ", reason: " (.getMessage ^Throwable x))))
       [nil x])))
 
 
@@ -261,7 +262,8 @@
                                   (normalize-failure opts))]
     ;; log error if required
     (when (and error log-errors)
-      (log/log log-ns log-level (when log-stacktrace error) (str message " @ " call-site)))
+      (log/log log-ns log-level (when log-stacktrace error)
+               (str message " @ " call-site ", reason: " (.getMessage ^Throwable error))))
     ;; return operation result
     result))
 
