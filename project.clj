@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "0.5.0-alpha3"
+(defproject com.brunobonacci/safely "0.5.0-alpha4"
   :description "safely it's a Clojure library for exception handling
   and offers a elegant declarative approach to the error management."
   :url "https://github.com/BrunoBonacci/safely"
