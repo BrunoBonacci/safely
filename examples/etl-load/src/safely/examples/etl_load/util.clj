@@ -12,6 +12,7 @@
        (safely
         (dyn/describe-table {:endpoint region} :table-name table-name)
         :on-error
+        :log-stacktrace false
         :default nil)
 
      (println "Creating table:" table-name)
@@ -29,7 +30,8 @@
    :on-error
    :max-retry 5
    :message "Creating table"
-   :log-stacktrace false))
+   :log-stacktrace false
+   :track-as "safely.examples.etl_load.create_table"))
 
 
 

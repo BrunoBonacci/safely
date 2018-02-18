@@ -37,7 +37,9 @@
     :item rec)
 
    :on-error
-   :max-retry :forever))
+   :max-retry :forever
+   :log-stacktrace false
+   :track-as "safely.examples.etl_load.save_record"))
 
 
 
