@@ -231,6 +231,8 @@
   :thread-pool-size  10
   :queue-size        5)
 
+ (sleep 100)
+
  (-> (circuit-breaker-info :test) :in-flight) => 0
 
  (safely
@@ -261,6 +263,8 @@
   :circuit-breaker   :test
   :thread-pool-size  10
   :queue-size        5)
+
+ (sleep 100)
 
  (-> (circuit-breaker-info :test) :in-flight) => 0
 
