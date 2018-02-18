@@ -3,7 +3,7 @@
             [clojure.tools.logging :as log]
             [defun :refer [defun]]
             [safely.thread-pool
-             :refer [async-execute-with-pool
+             :refer [async-execute-with-pool timeout-wait
                      fixed-thread-pool running-task-count]])
   (:import java.util.concurrent.ThreadPoolExecutor))
 
@@ -434,7 +434,8 @@
 
 (defn execute-with-circuit-breaker
   "Execute a thunk `f` in a circuit-breaker pool"
-  [f {:keys [circuit-breaker timeout] :as options}]
+  [f {:keys [circuit-breaker timeout
+             cancel-on-timeout] :as options}]
   {:pre [(not (nil? circuit-breaker))]}
   (let [state  (circuit-breaker-state options)
         state' (deref state)
@@ -446,7 +447,7 @@
               ;; executed in thread-pool and get a promise of result
               (async-execute-with-pool f)
               ;; wait result or timeout to expire
-              (deref timeout [nil :timeout nil]))
+              (timeout-wait timeout cancel-on-timeout))
 
           ;; ELSE
           [nil :circuit-open nil])]

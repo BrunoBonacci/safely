@@ -216,3 +216,145 @@
     last
     ))
  => [:open :circuit-open])
+
+
+
+(fact-with-test-pools
+ "When the timeout time elapses, we can still leave the task in the
+ background."
+
+ (safely
+  :ok
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5)
+
+ (-> (circuit-breaker-info :test) :in-flight) => 0
+
+ (safely
+  (sleep 5000)
+  :ok
+
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5
+  :timeout           1000
+  :cancel-on-timeout :never
+  :default nil) => nil
+
+ (-> (circuit-breaker-info :test) :in-flight) => 1
+ )
+
+
+
+(fact-with-test-pools
+ "When the timeout time elapses, we can cancel the request."
+
+ (safely
+  :ok
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5)
+
+ (-> (circuit-breaker-info :test) :in-flight) => 0
+
+ (safely
+  (sleep 5000)
+  :ok
+
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5
+  :timeout           1000
+  :cancel-on-timeout :always
+  :default nil) => nil
+
+ (-> (circuit-breaker-info :test) :in-flight) => 0
+ )
+
+
+
+(fact-with-test-pools
+ "When the timeout time elapses, we can cancel the request if it is
+ still in the queue. (:cancel-on-timeout :if-not-running)"
+
+ (with-parallel 10 ;; thread-pool-size: 10 + queue size: 5
+   (safely
+    (sleep 2000)
+    :ok
+
+    :on-error
+    :circuit-breaker :test
+    :thread-pool-size  10
+    :queue-size        5))
+
+ (sleep 100)
+
+ (-> (circuit-breaker-info :test) :in-flight) => 10
+
+ (safely
+  (sleep 2000)
+  :ok
+
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5
+  :timeout           1000
+  :cancel-on-timeout :if-not-running
+  :default nil) => nil
+
+ ;; cancelled tasks which are in the queue are purged
+ ;; only at the time they are scheduled
+ (-> (circuit-breaker-info :test) :in-flight) => 11
+ (sleep 2500)
+ (-> (circuit-breaker-info :test) :in-flight) => 0
+ )
+
+
+(fact-with-test-pools
+ "When the timeout time elapses, we can cancel the request if it is
+ still in the queue. (:cancel-on-timeout :always)"
+
+ (with-parallel 10 ;; thread-pool-size: 10 + queue size: 5
+   (safely
+    (sleep 2000)
+    :ok
+
+    :on-error
+    :circuit-breaker :test
+    :thread-pool-size  10
+    :queue-size        5))
+
+ (sleep 100)
+
+ (-> (circuit-breaker-info :test) :in-flight) => 10
+
+ (safely
+  (sleep 2000)
+  :ok
+
+  :on-error
+  :log-stacktrace    false
+  :circuit-breaker   :test
+  :thread-pool-size  10
+  :queue-size        5
+  :timeout           1000
+  :cancel-on-timeout :always
+  :default nil) => nil
+
+ ;; cancelled tasks which are in the queue are purged
+ ;; only at the time they are scheduled
+ (-> (circuit-breaker-info :test) :in-flight) => 11
+ (sleep 2500)
+ (-> (circuit-breaker-info :test) :in-flight) => 0
+ )

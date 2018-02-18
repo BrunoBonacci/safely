@@ -113,6 +113,10 @@ This is a quick ref-card of all possible configurable options:
  ;; the number of milliseconds to wait before giving up
  :timeout           30000 ;; (millis, default wait forever)
 
+ ;; What to do with the request when the timeout time is
+ ;; elapsed. :never, :if-not-running or :always
+ :cancel-on-timeout :always
+
  ;; stats are collected about the outcome of the operations
  ;; this parameter controls the number of 1-sec buckets
  ;; to control.

@@ -1,6 +1,6 @@
 (ns safely.thread-pool
   (:import [java.util.concurrent
-            ThreadPoolExecutor TimeUnit
+            ThreadPoolExecutor TimeUnit Callable Future
             ThreadFactory ArrayBlockingQueue
             ExecutorService RejectedExecutionException]))
 
@@ -58,18 +58,51 @@
   if the thunk throws an exception, and `:queue-full` when the thread
   pool can't accent any more tasks."
   [^ExecutorService pool thunk]
-  (let [value (promise)]
-    (try
-      (.execute
-       pool
-       (fn []
-         (try
-           (deliver value [(thunk) nil nil])
-           (catch Throwable x
-             (deliver value [nil :error x])))))
-      (catch RejectedExecutionException x
-        (deliver value [nil :queue-full nil])))
-    value))
+  (try
+    (.submit
+     pool
+     ^Callable
+     (fn []
+       (try
+         [(thunk) nil nil]
+         (catch Throwable x
+           [nil :error x]))))
+    (catch RejectedExecutionException x
+      (deliver (promise) [nil :queue-full nil]))))
+
+
+
+(defn cancel
+  "Attempts to cancel execution of this task. This attempt will fail if
+  the task has already completed, has already been cancelled, or could
+  not be cancelled for some other reason. If successful, and this task
+  has not started when cancel is called, this task should never
+  run. If the task has already started, then the `:force true`
+  parameter determines whether the thread executing this task should
+  be interrupted in an attempt to stop the task.
+
+  Returns `false` if the task could not be cancelled, typically
+  because it has already completed normally; `true` if the
+  cancellation was requested and `nil` if the task was not
+  cancellable."
+  [task & {:keys [force] :or {force false}}]
+  (when (instance? Future task)
+    (.cancel ^Future task ^boolean force)))
+
+
+
+(defn timeout-wait
+  "It waits on a  async value up to a given timeout.
+  If the timeout is elapsed and the value is not available yet, then
+  then the task is cancelled according to the `cancel-strategy`.
+  accepted values: `:never`, `:if-not-running` or `:always`"
+  [value timeout cancel-strategy]
+  (let [[_ e _ :as v] (deref value timeout [nil :timeout nil])]
+    (when (and (= e :timeout)
+           (or (= :if-not-running cancel-strategy)
+              (= :always cancel-strategy)))
+      (cancel value :force (= :always cancel-strategy)))
+    v))
 
 
 
@@ -80,9 +113,10 @@
   if the thunk throws an exception,`:queue-full` when the thread
   pool can't accent any more tasks, and `:timeout` when a timeout
   was reached."
-  [^ExecutorService pool timeout thunk]
+  [^ExecutorService pool timeout thunk
+   & {:keys [cancel-on-timeout] :or {cancel-on-timeout :always}}]
   (let [value (async-execute-with-pool pool thunk)]
-    (deref value timeout [nil :timeout nil])))
+    (timeout-wait value timeout cancel-on-timeout)))
 
 
 

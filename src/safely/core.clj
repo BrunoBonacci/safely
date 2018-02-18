@@ -33,6 +33,7 @@
    :queue-size        5
    :sample-size       100
    :timeout           Long/MAX_VALUE
+   :cancel-on-timeout :always ;; :never :if-not-running :always
    :counters-buckets  10
 
    :circuit-breaker-strategy :failure-threshold
@@ -387,6 +388,13 @@
         expires the resulting value is returned to the caller, otherwise
         a timeout exception is thrown.
 
+     :cancel-on-timeout :always It controls what happen to the request
+        when a timeout wait time is reached.  You can choose when you want
+        to cancel the request. Available options are: `:never`,
+        `:if-not-running`, `:always`. `:if-not-running` cancels the request
+        only if it is still in the queue and the execution is not started
+        yet.
+
      :counters-buckets 10
         The number of 1-second buckets with counters for the number of
         requests succeeded, failed, timed out, etc. Only the most
@@ -594,6 +602,13 @@
         When set, if the thread process the request before the timeout
         expires the resulting value is returned to the caller, otherwise
         a timeout exception is thrown.
+
+     :cancel-on-timeout :always It controls what happen to the request
+        when a timeout wait time is reached.  You can choose when you want
+        to cancel the request. Available options are: `:never`,
+        `:if-not-running`, `:always`. `:if-not-running` cancels the request
+        only if it is still in the queue and the execution is not started
+        yet.
 
      :counters-buckets 10
         The number of 1-second buckets with counters for the number of
