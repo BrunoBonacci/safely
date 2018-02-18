@@ -32,8 +32,8 @@ groups:
 ```
 <track-as>.inner
 <track-as>.outer
-<track-as>.inner.errors
-<track-as>.outer.errors
+<track-as>.inner_errors
+<track-as>.outer_errors
 ```
 
 The `.inner` group refers call container inside the block, in our
@@ -78,14 +78,14 @@ myapp.mymodule.loadUser.outer
               99% <= 69.67 milliseconds
             99.9% <= 79.93 milliseconds
 
-myapp.mymodule.loadUser.inner.errors
+myapp.mymodule.loadUser.inner_errors
              count = 33                     >- errors count
          mean rate = 0.14 events/second     \
      1-minute rate = 0.16 events/second     |_ errors rate
      5-minute rate = 2.98 events/second     |
     15-minute rate = 4.86 events/second     /
 
-myapp.mymodule.loadUser.outer.errors
+myapp.mymodule.loadUser.outer_errors
              count = 0
          mean rate = 0.0 events/second
      1-minute rate = 0.0 events/second

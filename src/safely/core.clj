@@ -69,7 +69,7 @@
      (if name#
        (try (track-time (str name# ".outer") ~@body)
             (catch Throwable x#
-              (track-rate (str name# ".outer.errors"))
+              (track-rate (str name# ".outer_errors"))
               (throw x#)))
        (do ~@body))))
 
@@ -83,7 +83,7 @@
      (if name#
        (try (track-time (str name# ".inner") ~@body)
             (catch Throwable x#
-              (track-rate (str name# ".inner.errors"))
+              (track-rate (str name# ".inner_errors"))
               (throw x#)))
        (do ~@body))))
 
