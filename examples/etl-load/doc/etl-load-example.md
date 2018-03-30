@@ -140,10 +140,11 @@ Let's look at the following diagram:
 ![write capacity](./load-write-capacity2.png)
 
 
-  * `1)` - Initially DynamoDB allows for a short burst of requests
-     which goes above the provisioned throughput. However since the
-     requests keep coming consistently at a rate higher that the
-     provisioned one DynamoDB will start throttle requests sending
+  * `1)` - Initially [DynamoDB allows for a short
+     burst](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/GuidelinesForTables.html#GuidelinesForTables.Bursting)
+     of requests which goes above the provisioned throughput. However
+     since the requests keep coming consistently at a rate higher that
+     the provisioned one DynamoDB will start throttle requests sending
      back a `HTTP 400 code (Bad Request)` and a
      `ProvisionedThroughputExceededException` [^1] which are then
      trapped by `safely` and it will start to backoff.
