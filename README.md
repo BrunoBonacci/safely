@@ -189,6 +189,7 @@ This is the simplest of the policies. In case of an exception with the
 given code a default value will returned.
 
 ```Clojure
+;; no error raised, so result is returned
 (safely
  (/ 1 2)
 
@@ -197,6 +198,8 @@ given code a default value will returned.
 ;;=> 1/2
 
 
+;; an error is raised, but a default value is given
+;; so the default value is returned
 (safely
  ;; ArithmeticException Divide by zero
  (/ 1 0)
