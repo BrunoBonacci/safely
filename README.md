@@ -1,6 +1,6 @@
 # safely
 
-Safely it's a Clojure library for handling exception in code executions.
+Safely it's a Clojure's circuit-breaker library for handling retries in code executions.
 The library offers out of the box:
 
   * declarative exception handling
@@ -18,8 +18,9 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ``` clojure
-[com.brunobonacci/safely "0.5.0-alpha3"]
-;; last stable (no circuit-breaker)
+;; stable version with circuit breaker
+[com.brunobonacci/safely "0.5.0-alpha5"]
+;; (no circuit-breaker)
 [com.brunobonacci/safely "0.3.0"]
 ```
 
