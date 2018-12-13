@@ -134,3 +134,19 @@ myapp.mymodule.loadUser.circuit_breaker.userLoad.errors.queue_full
      5-minute rate = 0.0 events/second
     15-minute rate = 0.0 events/second
 ```
+
+Where:
+
+  * `.errors.execution` represents the errors triggered by the inner
+    execution block. Typically the actual external call.
+  * `.errors.queue_full` is triggered when the circuit-breaker request
+    queue if full. It typically means that the external system is
+    getting slower and it is trying to generate some back pressure. If
+    situation doesn't recover the circuit will be triggered open.
+    In this case it is NOT a good idea to increase the queue size.
+  * `.errors.timeout` - this error is triggered when the external
+    system (or inner block) call is taking longer than you are willing
+    to wait for.
+  * `.errors.circuit_open` - This error is triggered when the system
+    is trying to process requests while the circuit is open. In this
+    case requested are rejected immediately.

@@ -10,5 +10,5 @@ pom.xml.asc
 .hgignore
 .hg/
 dev/
-/flymd.md
-/flymd.html
+flymd.md
+flymd.html
