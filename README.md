@@ -97,10 +97,10 @@ This is a quick ref-card of all possible configurable options:
  ;; truthy or falsey.
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
- ;; to activate the circuit breaker just name the operation
+ ;; to activate the circuit breaker just give a name to the operation
  :circuit-breaker :operation-name
 
- ;; the following options are only used in conjunction with
+ ;; the following options are ONLY used in conjunction with
  ;; a circuit breaker
 
  ;; control the thread pool size for this operation
@@ -583,7 +583,8 @@ For example:
   :on-error
   :max-retry 3
   :retry-delay [:random-range :min 2000 :max 5000]
-  :track-as "myapp.services.users.fetch-active")
+  :track-as "myapp.services.users.fetch-active"
+  :circuit-breaker :fetch-active-users)
 ```
 
 This will track a number of interesting metrics about this single
