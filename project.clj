@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "0.5.0-alpha5"
+(defproject com.brunobonacci/safely "0.5.0-alpha6"
   :description "Safely it's a Clojure's circuit-breaker library for handling retries in code executions."
   :url "https://github.com/BrunoBonacci/safely"
 
@@ -8,7 +8,7 @@
   :scm {:name "git" :url "https://github.com/BrunoBonacci/safely"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.match "0.3.0-alpha4"]
+                 [org.clojure/core.match "0.3.0-alpha5"]
                  [defun "0.2.0"]
                  [org.clojure/tools.logging "0.4.1"]
                  [samsara/trackit-core "0.8.0"]
@@ -21,7 +21,7 @@
   :profiles {:dev {:resource-paths ["dev-resources"]
                    :dependencies [[org.clojure/test.check "0.9.0"]
                                   [midje "1.9.4"]
-                                  [org.slf4j/slf4j-log4j12 "1.7.25"]]
+                                  [org.slf4j/slf4j-log4j12 "1.7.26"]]
                    :plugins [[lein-midje "3.2.1"]]}}
 
   :aliases {"test" ["do" "clean," "midje"]}

@@ -21,7 +21,7 @@ Add the dependency into your `project.clj`.
 
 ``` clojure
 ;; stable version with circuit breaker
-[com.brunobonacci/safely "0.5.0-alpha5"]
+[com.brunobonacci/safely "0.5.0-alpha6"]
 ;; (no circuit-breaker)
 [com.brunobonacci/safely "0.3.0"]
 ```
