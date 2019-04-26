@@ -856,7 +856,7 @@ This might wait up to 40s before returning "".
 (safely
   (slurp "/not/existing/file")
   :on-error
-  :max-retry 3
+  :max-retry 5
   :default "")
 ```
 
@@ -869,7 +869,7 @@ returns immediately (same code path, but no sleep).
   (safely
     (slurp "/not/existing/file")
     :on-error
-    :max-retry 3
+    :max-retry 5
     :default ""))
 ```
 
