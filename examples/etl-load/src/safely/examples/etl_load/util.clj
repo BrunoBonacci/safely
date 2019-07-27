@@ -28,7 +28,7 @@
        :write-capacity-units write-capacity-units}))
 
    :on-error
-   :max-retry 5
+   :max-retries 5
    :message "Creating table"
    :log-stacktrace false
    :track-as "safely.examples.etl_load.create_table"))
@@ -51,6 +51,6 @@
       :table-name table-name))
 
    :on-error
-   :max-retry 5
+   :max-retries 5
    :message "Deleting table table"
    :log-stacktrace false))

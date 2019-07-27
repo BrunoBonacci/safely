@@ -103,7 +103,7 @@ with a exponential backoff in case of any type of failure.
     :item rec)
 
    :on-error
-   :max-retry :forever))
+   :max-retries :forever))
 ```
 
 As you can see the only difference between a normal
@@ -117,7 +117,7 @@ reasons one that retries automatically is that we wrapped our
    ;; dynamodb/put-item
 
    :on-error
-   :max-retry :forever)
+   :max-retries :forever)
 ```
 
 With this simple change the function is going to retry until it

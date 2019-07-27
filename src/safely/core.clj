@@ -22,7 +22,7 @@
    :log-level         :warn
    :log-stacktrace    true
    :log-ns            "safely.log"
-   :max-retry         0
+   :max-retries       0
    :retry-delay       [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :track-as          nil
    :retryable-error?  nil
@@ -54,10 +54,29 @@
 ;;                                                                            ;;
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
+(defn- rename-key
+  [m old new]
+  (if (not= old new)
+    (cond-> m
+      (not= ::not-found (get m old ::not-found))
+      (as-> $ (assoc $ new (get $ old)) (dissoc $ old)))
+    m))
+
+
+
+(defn- conform-deprecations
+  "Replaces the deprecated options with their substitutions"
+  [opts]
+  (-> opts
+     (rename-key :max-retry :max-retries)))
+
+
 
 (defn- apply-defaults [cfg defaults]
-  (-> (merge defaults cfg)
-      (update :max-retry (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
+  (as-> cfg $
+    (conform-deprecations $)
+    (merge defaults $)
+    (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
 
 
@@ -303,7 +322,7 @@
 
    Available retry policies:
 
-     :max-retry <n> or :forever
+     :max-retries <n> or :forever
         will retry the code block in case of failures for a maximum
         of <n> times. Since this express the 're-tries' you should assume
         the total number of attempts to be at most n + 1.
@@ -333,7 +352,7 @@
      :retry-delay [:rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>]
         To sleep cycling the given list and randomizing by +/- <pct>.
         On the first retry will wait <millis1> +/- <pct>, on the second
-        retry will wait <millis2> +/- <pct> as so on. If the :max-retry
+        retry will wait <millis2> +/- <pct> as so on. If the :max-retries
         exceeds the number of waiting time it will restart from <millis1>.
 
      :retryable-error? (fn [exception] true)
@@ -462,17 +481,17 @@
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
-  [f & {:as spec}]
+  [f & {:as opts}]
   (let [;; applying defaults
-        spec'   (apply-defaults spec defaults)
+        opts'   (apply-defaults opts defaults)
         ;; lazy execution as only needed in case of error
-        delayer (delay (apply sleeper (:retry-delay spec')))
+        delayer (delay (apply sleeper (:retry-delay opts')))
         ;; instrument inner call
-        f       (fn [] (inner-tracker (:track-as spec') (f)))]
-    (outer-tracker (:track-as spec')
-     (loop [{:keys [message default max-retry attempt :track-as
-                    retryable-error?] :as data} spec']
-       (let [[result ex] (make-attempt spec' f)]
+        f       (fn [] (inner-tracker (:track-as opts') (f)))]
+    (outer-tracker (:track-as opts')
+      (loop [{:keys [message default max-retries attempt track-as
+                     retryable-error?] :as data} opts']
+        (let [[result ex] (make-attempt opts' f)]
          ;; check execution outcome
          (if (nil? ex)
            ;; it ran successfully
@@ -486,11 +505,11 @@
              (throw ex)
 
              ;; we reached the max retry but we have a default
-             (and (not= ::undefined default) (>= attempt max-retry))
+             (and (not= ::undefined default) (>= attempt max-retries))
              default
 
              ;; we got error and reached the max retry
-             (and (= ::undefined default) (>= attempt max-retry))
+             (and (= ::undefined default) (>= attempt max-retries))
              (throw (ex-info message data ex))
 
              ;; retry
@@ -498,6 +517,15 @@
              (do
                (@delayer)
                (recur (update data :attempt inc))))))))))
+
+
+
+(defn- deprecation-warning
+  "It displays a deprecation warning message if a deprecated option is found. "
+  [call-site options]
+  (let [options (into #{} (keys (apply assoc {} options)))]
+    (when (:max-retry options)
+      (println "WARNING: Safely `:max-retry` options is deprecated in favour of `:max-retries`, please update your code in " call-site))))
 
 
 
@@ -518,7 +546,7 @@
 
    Available retry policies:
 
-     :max-retry <n> or :forever
+     :max-retries <n> or :forever
         will retry the code block in case of failures for a maximum
         of <n> times. Since this express the 're-tries' you should assume
         the total number of attempts to be at most n + 1.
@@ -548,7 +576,7 @@
      :retry-delay [:rand-cycle [<millis1> <millis2> ... <millisN>] :+/- <pct>]
         To sleep cycling the given list and randomizing by +/- <pct>.
         On the first retry will wait <millis1> +/- <pct>, on the second
-        retry will wait <millis2> +/- <pct> as so on. If the :max-retry
+        retry will wait <millis2> +/- <pct> as so on. If the :max-retries
         exceeds the number of waiting time it will restart from <millis1>.
 
      :retryable-error? (fn [exception] true)
@@ -683,6 +711,7 @@
         call-site# (str *ns* "[l:" line ", c:" column "]")
         ;; checking options format
         [body _ options :as seg] (partition-by #{:on-error} code)]
+    (deprecation-warning call-site# options)
     (if (not= 3 (count seg))
       (throw (IllegalArgumentException.
               "Missing or invalid ':on-error' clause."))

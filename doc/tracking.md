@@ -19,7 +19,7 @@ For example let's take a look at the following code snippet:
   (users/load-user :id "d548a66b")    | Inner    |
                                       /          | Outer
   :on-error                                      |
-  :max-retry 5                                   |
+  :max-retries 5                                 |
   :default   nil                                 |
   :track-as  "myapp.mymodule.loadUser")          /
 ```
@@ -109,7 +109,7 @@ For example let's take a look at the following code snippet:
   (users/load-user :id "d548a66b")
 
   :on-error
-  :max-retry 5
+  :max-retries 5
   :default   nil
   :track-as  "myapp.mymodule.loadUser"
   :circuit-breaker :userLoad)

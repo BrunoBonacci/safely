@@ -48,7 +48,7 @@ Then, make a call to a remote system:
   (api-call "other-system")
 
   :on-error
-  :max-retry 5
+  :max-retries 5
   :default   {:some :value})
 ```
 
@@ -74,7 +74,7 @@ This is a quick ref-card of all possible configurable options:
  ;; retry a number of times before
  ;; to give up or return the default value
  ;; use :forever for unlimited retries.
- :max-retry 5
+ :max-retries 5
 
  ;; between retries wait a fix amount of time (not recommended)
  :retry-delay [:fix 3000] ;; 3s in millis
@@ -231,19 +231,19 @@ The code could look like as follow:
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3)
+  :max-retries 3)
 ```
 
-*In this case `:max-retry 3` means that there can be a maximum of 4
+*In this case `:max-retries 3` means that there can be a maximum of 4
 attempts* in total. Between each attempts the thread will be sleeping
 for a random amount of time.  We will discuss retry delays later on.
 
 If the first attempt succeed, then the result of the web request is
 returned, however if an error arises then `safely` will retry until
 one of the following conditions is reached: either a the operation
-executes successfully, or the `:max-retry` is reached.
+executes successfully, or the `:max-retries` is reached.
 
-At the point the `:max-retry` is reached, if a `:default` value has
+At the point the `:max-retries` is reached, if a `:default` value has
 been provided then it will be returned, otherwise the exception will
 be thrown up the stack.
 
@@ -253,7 +253,7 @@ be thrown up the stack.
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :default {:accounts [] :status "BUSY"})
 ```
 
@@ -333,7 +333,7 @@ strongly discouraged in order to minimize self emergent behaviour.
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:fix 3000])
 ```
 
@@ -348,7 +348,7 @@ seconds (5000 milliseconds).
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
@@ -365,7 +365,7 @@ effectively anything between 1500 millis (3000 - 50%) and 4500 millis
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random 3000 :+/- 0.50])
 ```
 
@@ -382,7 +382,7 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50])
 ```
 
@@ -457,7 +457,7 @@ which you want to wait for a similar amount of time.
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50 :max 240000])
 ```
 
@@ -491,7 +491,7 @@ delay between each retry. Once last delay in the sequence is reached
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 6
+  :max-retries 6
   :retry-delay [:rand-cycle [1000 3000 5000 10000] :+/- 0.50])
 ```
 
@@ -582,7 +582,7 @@ For example:
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-range :min 2000 :max 5000]
   :track-as "myapp.services.users.fetch-active"
   :circuit-breaker :fetch-active-users)
@@ -633,7 +633,7 @@ happen:
   - **the request processing fails with an error**, in this case the
     error is propagated back to the caller and further retries could
     be made depending whether they are configured and within the
-    limit. If the limit of retries in `:max-retry` is reached then the
+    limit. If the limit of retries in `:max-retries` is reached then the
     `:default` value is returned when provided or the error itself.
   - **the request times out**, if the request has configured
     `:timeout` and the processing isn't completed within this time, an
@@ -823,7 +823,7 @@ So for example this is the use of the macro you have seen so far:
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
@@ -835,7 +835,7 @@ This is the same example **but with the `safely-fn` instead**:
   (fn []
     (http/get "http://user.service.local/users?active=true"))
 
-  :max-retry 3
+  :max-retries 3
   :retry-delay [:random-range :min 2000 :max 5000])
 ```
 
@@ -856,7 +856,7 @@ This might wait up to 40s before returning "".
 (safely
   (slurp "/not/existing/file")
   :on-error
-  :max-retry 5
+  :max-retries 5
   :default "")
 ```
 
@@ -869,7 +869,7 @@ returns immediately (same code path, but no sleep).
   (safely
     (slurp "/not/existing/file")
     :on-error
-    :max-retry 5
+    :max-retries 5
     :default ""))
 ```
 
