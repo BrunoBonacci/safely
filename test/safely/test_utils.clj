@@ -23,7 +23,7 @@
 
 
 
-(defmacro count-retry [body]
+(defmacro count-attempts [body]
   (let [body# `(~(first body) (count-passes) ~@(next body))]
     `(binding [*counter* (atom 0)
                safely.core/*sleepless-mode* true]

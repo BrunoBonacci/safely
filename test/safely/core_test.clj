@@ -99,7 +99,7 @@
  (fact
   "using :max-retries to retry at most n times - max-retries reached with default value"
 
-  (count-retry
+  (count-attempts
    (safely
     (boom)
     :on-error
@@ -116,7 +116,7 @@
   (let [expr (crash-boom-bang!
               #(boom)
               (constantly 10))]
-    (count-retry
+    (count-attempts
      (safely
       (expr)
       :on-error
@@ -198,7 +198,7 @@
   (fact
    "using :max-retry to retry at most n times - max-retries reached with default value"
 
-   (count-retry
+   (count-attempts
     (safely
      (boom)
      :on-error
@@ -215,7 +215,7 @@
    (let [expr (crash-boom-bang!
                #(boom)
                (constantly 10))]
-     (count-retry
+     (count-attempts
       (safely
        (expr)
        :on-error
