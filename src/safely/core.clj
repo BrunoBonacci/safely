@@ -24,8 +24,9 @@
    :log-ns            "safely.log"
    :max-retries       0
    :retry-delay       [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
-   :track-as          nil
    :retryable-error?  nil
+   :failed?           nil
+   :track-as          nil
 
    ;; Circuit-Breaker options
    ;;:circuit-breaker :name
@@ -76,6 +77,9 @@
   (as-> cfg $
     (conform-deprecations $)
     (merge defaults $)
+    ;; if failed? is provided user failed? otherwise is false
+    (update $ :failed? (fn [p?] (or p? (constantly false))))
+    ;; if :max-retries is :forever, then retry as many times as you can
     (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
 
@@ -366,6 +370,23 @@
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
 
+     :failed? (fn [result] false)
+        You can provide a predicate function to determine whether the result
+        of the body expression is a `failed` result of not.
+        The failed predicate can be used to produce the same delayed retry
+        with APIs which do not throw exceptions. For example consider a
+        HTTP request which returns the status instead of failing.
+        With the failed predicate function you could have exponential back-off
+        retry when the HTTP response contains a HTTP status code which is not 2xx.
+        Another use of this is for example in APIs which support polling.
+        The failed predicate function can be used to determine whether the polling
+        call returned valid items or it was empty, and if it is empty then it is
+        possible to slow down the polling using the default exponential back-off.
+        The `:failed?` predicate function is executed only on successful body
+        execution and only when provided. If `:failed?` returns true, then the
+        execution is considered failed, even though there is no exception,
+        and it will follow the exceptional retry logic as normal.
+
   Circuit breaker options:
      :circuit-breaker :operation-name
         This options is required to activate the circuit breaker.
@@ -490,33 +511,35 @@
         f       (fn [] (inner-tracker (:track-as opts') (f)))]
     (outer-tracker (:track-as opts')
       (loop [{:keys [message default max-retries attempt track-as
-                     retryable-error?] :as data} opts']
+                     retryable-error? failed?] :as data} opts']
         (let [[result ex] (make-attempt opts' f)]
-         ;; check execution outcome
-         (if (nil? ex)
-           ;; it ran successfully
-           result
+          ;; check execution outcome,
+          ;; if it is not an error or a failed result, then..
+          (if-not (or ex (failed? result))
+            ;; it ran successfully
+            result
 
-           ;; else: we have an error
-           ;; and we need to handle the outcome
-           (cond
-             ;; check whether this is a retryable error
-             (and retryable-error? (not (retryable-error? ex)))
-             (throw ex)
+            ;; else: we have an error
+            ;; and we need to handle the outcome
+            (cond
+              ;; check whether is a retryable error only when the function is provided
+              ;; and there is an actual error
+              (and retryable-error? ex (not (retryable-error? ex)))
+              (throw ex)
 
-             ;; we reached the max retry but we have a default
-             (and (not= ::undefined default) (>= attempt max-retries))
-             default
+              ;; we reached the max retry but we have a default
+              (and (not= ::undefined default) (>= attempt max-retries))
+              default
 
-             ;; we got error and reached the max retry
-             (and (= ::undefined default) (>= attempt max-retries))
-             (throw (ex-info message data ex))
+              ;; we got error and reached the max retry
+              (and (= ::undefined default) (>= attempt max-retries))
+              (throw (ex-info message data ex))
 
-             ;; retry
-             :else
-             (do
-               (@delayer)
-               (recur (update data :attempt inc))))))))))
+              ;; retry
+              :else
+              (do
+                (@delayer)
+                (recur (update data :attempt inc))))))))))
 
 
 
@@ -589,6 +612,23 @@
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
+
+     :failed? (fn [result] false)
+        You can provide a predicate function to determine whether the result
+        of the body expression is a `failed` result of not.
+        The failed predicate can be used to produce the same delayed retry
+        with APIs which do not throw exceptions. For example consider a
+        HTTP request which returns the status instead of failing.
+        With the failed predicate function you could have exponential back-off
+        retry when the HTTP response contains a HTTP status code which is not 2xx.
+        Another use of this is for example in APIs which support polling.
+        The failed predicate function can be used to determine whether the polling
+        call returned valid items or it was empty, and if it is empty then it is
+        possible to slow down the polling using the default exponential back-off.
+        The `:failed?` predicate function is executed only on successful body
+        execution and only when provided. If `:failed?` returns true, then the
+        execution is considered failed, even though there is no exception,
+        and it will follow the exceptional retry logic as normal.
 
   Circuit breaker options:
      :circuit-breaker :operation-name

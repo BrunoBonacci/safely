@@ -143,6 +143,81 @@
 
 
 
+(fact
+ ":failed? predicate can be used to evaluate the response of a call
+  and determine if the call was successful or not. Unsuccessful calls
+  behave like Exceptions."
+
+
+ (fact
+  "using :failed? with :max-retries to retry at most n times - max-retries reached with default value"
+
+  (count-attempts
+   (safely
+    (- (inc (rand-int 10)))
+    :on-error
+    :failed? neg?
+    :log-stacktrace false
+    :max-retries 3
+    :default 1)) => [1 4]
+  )
+
+
+
+ (fact
+  "using :failed? with :max-retries to retry at most n times - if recover from failure value should be returned"
+
+  (let [expr (crash-boom-bang!
+              (constantly -10)
+              (constantly 10))]
+    (count-attempts
+     (safely
+      (expr)
+      :on-error
+      :failed? neg?
+      :log-stacktrace false
+      :max-retries 3
+      :default 1))) => [10 2]
+  )
+
+
+
+ (fact
+  "using :failed? with :max-retries without :default raises an exception"
+
+  (sleepless
+   (safely
+    -10
+    :on-error
+    :failed? neg?
+    :log-stacktrace false
+    :message "my explosion"
+    :max-retries 3)) => (throws Exception "my explosion")
+
+  )
+
+
+
+ (fact
+  "using :failed? with :max-retries protects from both Exception and failed requests"
+
+  (let [expr (crash-boom-bang!
+              #(boom)
+              (constantly -2)
+              (constantly -2)
+              (constantly 10))]
+    (count-attempts
+     (safely
+      (expr)
+      :on-error
+      :failed? neg?
+      :log-stacktrace false
+      :max-retries 3
+      :default 1))) => [10 4]
+  )
+ )
+
+
 
 (fact
  "using `:retryable-error?` predicate to filter which error should be retried

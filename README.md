@@ -98,6 +98,14 @@ This is a quick ref-card of all possible configurable options:
  ;; truthy or falsey.
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
+ ;; you can provide a predicate function which determine
+ ;; if the output of the body should be considered as a filed response
+ ;; this can be useful when using safely with APIs which have a return
+ ;; status for errors instead of exceptions. Two good examples are HTTP
+ ;; status codes and polling API, in which you wish to slow down the polling
+ ;; when the result of the previous polling doesn't contain records.
+ :failed? #(not (>= 200 (:status %) 299))
+
  ;; to activate the circuit breaker just give a name to the operation
  :circuit-breaker :operation-name
 
