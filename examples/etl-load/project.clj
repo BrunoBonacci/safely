@@ -12,7 +12,7 @@
 
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [cheshire "5.8.0"]
-                 [com.brunobonacci/safely "0.5.0-alpha4"]
+                 [com.brunobonacci/safely "0.5.0-alpha7"]
                  [amazonica "0.3.117"
                   :exclusions [com.amazonaws/aws-java-sdk
                                com.amazonaws/amazon-kinesis-client]]
