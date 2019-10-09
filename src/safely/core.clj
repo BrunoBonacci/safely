@@ -14,7 +14,7 @@
 
 
 (def ^:dynamic *sleepless-mode* false)
-(def ^:const defaults
+(def ^{:const true :no-doc true} defaults
   {:attempt           0
    :default           ::undefined
    :message           "Trapped expected error during safe block execution."
@@ -86,7 +86,7 @@
 
 (defmacro outer-tracker
   "utility macro to track execution time a tracker name is provided"
-  {:style/indent 1}
+  {:style/indent 1 :no-doc true}
   [name & body]
   `(let [name# ~name]
      (if name#
@@ -100,7 +100,7 @@
 
 (defmacro inner-tracker
   "utility macro to track execution time a tracker name is provided"
-  {:style/indent 1}
+  {:style/indent 1 :no-doc true}
   [name & body]
   `(let [name# ~name]
      (if name#
@@ -169,7 +169,23 @@
   "It returns a function (potentially stateful) which will sleep for a
    given amount of time each time it is called. All sleeps are
    randomized with the exception of the `[:fix n]` sleep (not
-   recommended)."
+   recommended).
+
+   It can be called in the following ways
+
+   - `[:fix n]`
+     It sleeps at lest `n` milliseconds *(NOT RECOMMENDED)*
+
+   - `[:random b :+/- v]`
+     It sleeps random `b` millis `+/-` `v`%, for example:
+     `[:random 3000 :+/- 0.5]` means that it will sleep for
+     `3s +/- 50%`, therefore the actual interval can be between
+     `1500` millis and `4500` millis (random uses uniform distribution)
+
+   - `[:random-range :min l :max h]`
+     It sleeps for a random amount of time between `min` and `:max`
+
+  "
 
   ([:fix n]                      (fn [] (sleep n)))
   ([:random b :+/- v]            (fn [] (sleep b :+/- v)))
