@@ -142,41 +142,41 @@
 
   examples:
 
-      ```
-      ;; create and start a thread named `runner`
-      (thread* {:name \"runner\"}
-        (fn []
-          (println \"Hi from runner!\")))
-      ;;=> nil
-      ```
+  ```
+  ;; create and start a thread named `runner`
+  (thread* {:name \"runner\"}
+    (fn []
+      (println \"Hi from runner!\")))
+  ;;=> nil
+  ```
 
-      ```
-      ;; create and start a thread named `runner` and get the result
-      @(thread* {:name \"runner\"}
-        (fn []
-          (reduce + (range 1000))))
-      ;;=> 499500
-      ```
+  ```
+  ;; create and start a thread named `runner` and get the result
+  @(thread* {:name \"runner\"}
+    (fn []
+      (reduce + (range 1000))))
+  ;;=> 499500
+  ```
 
-      ```
-      ;; create and start a thread named `runner`
-      (def t
-        (thread* {:name \"runner\" :auto-start false}
-          (fn []
-            (reduce + (range 1000)))))
-      ;; call the function to start the thread, deref for the result
-      @(t)
-      ;;=> 499500
-      ```
+  ```
+  ;; create and start a thread named `runner`
+  (def t
+    (thread* {:name \"runner\" :auto-start false}
+      (fn []
+        (reduce + (range 1000)))))
+  ;; call the function to start the thread, deref for the result
+  @(t)
+  ;;=> 499500
+  ```
 
-      ```
-      ;; exceptions are retuned as result
-      @(thread* {:name \"bad-runner\"}
-        (fn []
-          (/ 1 0)))
-      ;; it capture and returns the exception
-      ;;=> java.lang.ArithmeticException(\"Divide by zero\")
-      ```
+  ```
+  ;; exceptions are retuned as result
+  @(thread* {:name \"bad-runner\"}
+    (fn []
+      (/ 1 0)))
+  ;; it capture and returns the exception
+  ;;=> java.lang.ArithmeticException(\"Divide by zero\")
+  ```
 
   "
   [{:keys [name daemon priority auto-start]
@@ -215,37 +215,37 @@
 
   examples:
 
-      ```
-      ;; create and start a thread named `runner`
-      (thread \"runner\"
-          (println \"Hi from runner!\"))
-      ;;=> nil
-      ```
+  ```
+  ;; create and start a thread named `runner`
+  (thread \"runner\"
+      (println \"Hi from runner!\"))
+  ;;=> nil
+  ```
 
-      ```
-      ;; create and start a thread named `runner` and get the result
-      @(thread {:name \"runner\"}
-          (reduce + (range 1000)))
-      ;;=> 499500
-      ```
+  ```
+  ;; create and start a thread named `runner` and get the result
+  @(thread {:name \"runner\"}
+      (reduce + (range 1000)))
+  ;;=> 499500
+  ```
 
-      ```
-      ;; create and start a thread named `runner`
-      (def t
-        (thread {:name \"runner\" :auto-start false}
-            (reduce + (range 1000))))
-      ;; call the function to start the thread, deref for the result
-      @(t)
-      ;;=> 499500
-      ```
+  ```
+  ;; create and start a thread named `runner`
+  (def t
+    (thread {:name \"runner\" :auto-start false}
+        (reduce + (range 1000))))
+  ;; call the function to start the thread, deref for the result
+  @(t)
+  ;;=> 499500
+  ```
 
-      ```
-      ;; exceptions are retuned as result
-      @(thread \"bad-runner\"
-          (/ 1 0))
-      ;; it captures and returns the exception
-      ;;=> java.lang.ArithmeticException(\"Divide by zero\")
-      ```
+  ```
+  ;; exceptions are retuned as result
+  @(thread \"bad-runner\"
+      (/ 1 0))
+  ;; it captures and returns the exception
+  ;;=> java.lang.ArithmeticException(\"Divide by zero\")
+  ```
 
   "
    :arglists '([& body]
