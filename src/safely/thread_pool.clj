@@ -143,7 +143,7 @@
   examples:
 
   ```
-  ;; create and start a thread named `runner`
+  ;; create and starts a thread named `runner`
   (thread* {:name \"runner\"}
     (fn []
       (println \"Hi from runner!\")))
@@ -151,7 +151,7 @@
   ```
 
   ```
-  ;; create and start a thread named `runner` and get the result
+  ;; create and starts a thread named `runner` and get the result
   @(thread* {:name \"runner\"}
     (fn []
       (reduce + (range 1000))))
@@ -159,7 +159,7 @@
   ```
 
   ```
-  ;; create and start a thread named `runner`
+  ;; create and starts a thread named `runner`
   (def t
     (thread* {:name \"runner\" :auto-start false}
       (fn []
@@ -216,21 +216,21 @@
   examples:
 
   ```
-  ;; create and start a thread named `runner`
+  ;; create and starts a thread named `runner`
   (thread \"runner\"
       (println \"Hi from runner!\"))
   ;;=> nil
   ```
 
   ```
-  ;; create and start a thread named `runner` and get the result
+  ;; create and starts a thread named `runner` and get the result
   @(thread {:name \"runner\"}
       (reduce + (range 1000)))
   ;;=> 499500
   ```
 
   ```
-  ;; create and start a thread named `runner`
+  ;; create and starts a thread named `runner`
   (def t
     (thread {:name \"runner\" :auto-start false}
         (reduce + (range 1000))))
