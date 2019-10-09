@@ -1,4 +1,5 @@
-(ns safely.circuit-breaker
+(ns ^:no-doc safely.circuit-breaker
+  "Internal circuit breaker functions"
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clojure.tools.logging :as log]
             [defun :refer [defun]]

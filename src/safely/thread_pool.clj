@@ -126,3 +126,135 @@
   (let [completed (.getCompletedTaskCount tp)
         scheduled (.getTaskCount tp)]
     (-  scheduled completed)))
+
+
+
+
+(defn thread*
+  "It creates a thread and run the give thunk in the new thread.
+  It returns a promise of a result, it's similar to a future, but you
+  can control the thread name, priority etc.  If `auto-start` is
+  `true` then the thread is started after its creation; if `false`
+  then instead of returning a promise with the result it return a
+  function with no arguments which when called it starts the thread
+  and return the promise. All exception are caught and returned as
+  result.
+
+  examples:
+
+      ```
+      ;; create and start a thread named `runner`
+      (thread* {:name \"runner\"}
+        (fn []
+          (println \"Hi from runner!\")))
+      ;;=> nil
+      ```
+
+      ```
+      ;; create and start a thread named `runner` and get the result
+      @(thread* {:name \"runner\"}
+        (fn []
+          (reduce + (range 1000))))
+      ;;=> 499500
+      ```
+
+      ```
+      ;; create and start a thread named `runner`
+      (def t
+        (thread* {:name \"runner\" :auto-start false}
+          (fn []
+            (reduce + (range 1000)))))
+      ;; call the function to start the thread, deref for the result
+      @(t)
+      ;;=> 499500
+      ```
+
+      ```
+      ;; exceptions are retuned as result
+      @(thread* {:name \"bad-runner\"}
+        (fn []
+          (/ 1 0)))
+      ;; it capture and returns the exception
+      ;;=> java.lang.ArithmeticException(\"Divide by zero\")
+      ```
+
+  "
+  [{:keys [name daemon priority auto-start]
+    :or {name   "safely-custom-thread"
+         daemon false
+         auto-start true}}
+   thunk]
+  (when thunk
+    (let [result (promise)
+          thunk* (fn []
+                   (try (deliver result (thunk))
+                        (catch Throwable x
+                          (deliver result x))))
+          thread   (Thread. ^Runnable thunk*)
+          runner (fn [] (.start ^Thread thread) result)]
+
+      (when name     (.setName thread name))
+      (when daemon   (.setDaemon thread daemon))
+      (when priority (.setPriority thread priority))
+
+      (if auto-start
+        (runner)
+        runner))))
+
+
+
+(defmacro thread
+  {:doc "It creates a thread and run the give thunk in the new thread.
+  It returns a promise of a result, it's similar to a future, but you
+  can control the thread name, priority etc.  If `auto-start` is
+  `true` then the thread is started after its creation; if `false`
+  then instead of returning a promise with the result it return a
+  function with no arguments which when called it starts the thread
+  and return the promise. All exception are caught and returned as
+  result.
+
+  examples:
+
+      ```
+      ;; create and start a thread named `runner`
+      (thread \"runner\"
+          (println \"Hi from runner!\"))
+      ;;=> nil
+      ```
+
+      ```
+      ;; create and start a thread named `runner` and get the result
+      @(thread {:name \"runner\"}
+          (reduce + (range 1000)))
+      ;;=> 499500
+      ```
+
+      ```
+      ;; create and start a thread named `runner`
+      (def t
+        (thread {:name \"runner\" :auto-start false}
+            (reduce + (range 1000))))
+      ;; call the function to start the thread, deref for the result
+      @(t)
+      ;;=> 499500
+      ```
+
+      ```
+      ;; exceptions are retuned as result
+      @(thread \"bad-runner\"
+          (/ 1 0))
+      ;; it captures and returns the exception
+      ;;=> java.lang.ArithmeticException(\"Divide by zero\")
+      ```
+
+  "
+   :arglists '([& body]
+               [name & body]
+               [{:keys [name daemon priority auto-start]} & body])
+   :style/indent 1}
+  [& args]
+  (let [df (cond
+             (string? (first args)) {:name (first args)}
+             (map? (first args)) (first args))
+        thunk (if (nil? df) args (rest args))]
+    `(thread* ~df (fn [] ~@thunk))))

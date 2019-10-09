@@ -745,6 +745,7 @@
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
+  {:style/indent 1}
   [& code]
   (let [;; detecting call site
         {:keys [line column]} (meta &form)
