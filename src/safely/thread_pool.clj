@@ -170,7 +170,7 @@
   ```
 
   ```
-  ;; exceptions are retuned as result
+  ;; exceptions are returned as result
   @(thread* {:name \"bad-runner\"}
     (fn []
       (/ 1 0)))
@@ -240,7 +240,7 @@
   ```
 
   ```
-  ;; exceptions are retuned as result
+  ;; exceptions are returned as result
   @(thread \"bad-runner\"
       (/ 1 0))
   ;; it captures and returns the exception
