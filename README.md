@@ -1,8 +1,9 @@
 # safely
 [![Clojars Project](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely) ![CircleCi](https://img.shields.io/circleci/project/BrunoBonacci/safely.svg) ![last-commit](https://img.shields.io/github/last-commit/BrunoBonacci/safely.svg) [![cljdoc badge](https://cljdoc.org/badge/com.brunobonacci/safely)](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT)
 
-Safely it's a Clojure's circuit-breaker library for handling retries
-in code executions in a elegant declarative way.
+Safely is a Clojure's circuit-breaker library for handling retries in
+an elegant declarative way.
+
 The library offers out of the box:
 
   * declarative exception handling
