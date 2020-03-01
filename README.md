@@ -1,5 +1,5 @@
 # safely
-[![Clojars Project](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely) ![CircleCi](https://img.shields.io/circleci/project/BrunoBonacci/safely.svg) ![last-commit](https://img.shields.io/github/last-commit/BrunoBonacci/safely.svg) [![cljdoc badge](https://cljdoc.org/badge/com.brunobonacci/safely)](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT)
+[![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=svg)](https://circleci.com/gh/BrunoBonacci/safely) [![Clojars Project](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely) ![CircleCi](https://img.shields.io/circleci/project/BrunoBonacci/safely.svg) ![last-commit](https://img.shields.io/github/last-commit/BrunoBonacci/safely.svg) [![cljdoc badge](https://cljdoc.org/badge/com.brunobonacci/safely)](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT)
 
 Safely is a Clojure's circuit-breaker library for handling retries in
 an elegant declarative way.
@@ -883,12 +883,8 @@ returns immediately (same code path, but no sleep).
 ```
 
 
-## Development
-
-CI status: [![CircleCI](https://circleci.com/gh/BrunoBonacci/safely.svg?style=svg)](https://circleci.com/gh/BrunoBonacci/safely)
-
 ## License
 
-Copyright © 2015-2018 Bruno Bonacci
+Copyright © 2015-2020 Bruno Bonacci
 
 Distributed under the Apache License v 2.0 (http://www.apache.org/licenses/LICENSE-2.0)
