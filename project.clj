@@ -1,5 +1,5 @@
 (defproject com.brunobonacci/safely "0.5.0"
-  :description "Safely it's a declarative circuit-breaker library and retries handler for Clojure."
+  :description "Safely is a Clojure's circuit-breaker library for handling retries in an elegant declarative way."
   :url "https://github.com/BrunoBonacci/safely"
 
   :license {:name "Apache License 2.0"
