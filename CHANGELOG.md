@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Version 0.5.0
+## Version 0.5.0 (released: 2020-03-01)
 
   * [**NEW**] Introduced **circuit-breaker** functionality
   * [**BREAKING**] Metrics format: with the introduction of the
