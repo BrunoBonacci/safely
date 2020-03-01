@@ -119,6 +119,17 @@
 
 
 (defun random
+  "Returns a uniformly distributed random value within certain boundaries.
+
+   It can be used as following:
+
+   - `(random :min 100 :max 300)` It returns a random integer between `100` and
+     `300` (excluded)
+
+   - `(random 300 :+/- 0.50)` It returns a random integer uniformly distributed
+     between `150` and `450` (excluded)
+
+  "
   ([:min min :max max]  (+ min (rand-int (- max min))))
   ([base :+/- pct]      (let [variance (int (* base pct))]
                           (random :min (- base variance) :max (+ base variance)))))
@@ -150,7 +161,23 @@
 
 (defun sleep
   "It sleeps for at least `n` millis when not interrupted.
-   If interrupted, it doesn't throw an exception."
+   If interrupted, it doesn't throw an exception.
+
+   It can be called in the following ways
+
+   - `(sleep n)`
+     It sleeps at least `n` milliseconds, if not interrupted *(NOT RECOMMENDED)*
+
+   - `(sleep b :+/- v)`
+     It sleeps random `b` millis `+/-` `v`%, for example:
+     `(sleep 3000 :+/- 0.5)` means that it will sleep for
+     `3s +/- 50%`, therefore the actual interval can be between
+     `1500` millis and `4500` millis (random uses uniform distribution)
+
+   - `(sleep :min l :max h)`
+     It sleeps for a random amount of time between `min` and `:max`
+
+  "
   ([n]
    (when-not *sleepless-mode*
      (try
@@ -174,7 +201,7 @@
    It can be called in the following ways
 
    - `[:fix n]`
-     It sleeps at lest `n` milliseconds *(NOT RECOMMENDED)*
+     It sleeps at least `n` milliseconds *(NOT RECOMMENDED)*
 
    - `[:random b :+/- v]`
      It sleeps random `b` millis `+/-` `v`%, for example:
@@ -766,7 +793,8 @@
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
-  {:style/indent 1}
+  {:style/indent 1
+   :arglists '([& body :on-error & handling-options])}
   [& code]
   (let [;; detecting call site
         {:keys [line column]} (meta &form)
