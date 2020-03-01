@@ -1,6 +1,6 @@
 (ns safely.core
   (:require [clojure.tools.logging :as log]
-            [defun :refer [defun]]
+            [defun.core :refer [defun]]
             [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
             [samsara.trackit :refer [track-rate track-time]]))
 

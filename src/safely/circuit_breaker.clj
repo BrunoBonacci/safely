@@ -2,7 +2,7 @@
   "Internal circuit breaker functions"
   (:require [amalloy.ring-buffer :refer [ring-buffer]]
             [clojure.tools.logging :as log]
-            [defun :refer [defun]]
+            [defun.core :refer [defun]]
             [safely.thread-pool
              :refer [async-execute-with-pool timeout-wait
                      fixed-thread-pool running-task-count]])

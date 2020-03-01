@@ -11,4 +11,4 @@ jobs:
 
     steps:
       - checkout
-      - run: lein do clean, check, midje
+      - run: lein build-all

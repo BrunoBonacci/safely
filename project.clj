@@ -8,21 +8,27 @@
   :scm {:name "git" :url "https://github.com/BrunoBonacci/safely"}
 
   :dependencies [[org.clojure/clojure "1.8.0"]
-                 [org.clojure/core.match "0.3.0"]
-                 [defun "0.2.0"]
-                 [org.clojure/tools.logging "0.4.1"]
-                 [samsara/trackit-core "0.9.0"]
-                 [amalloy/ring-buffer "1.3.0"]]
+                 [org.clojure/core.match "1.0.0"]
+                 [defun "0.3.1"]
+                 [org.clojure/tools.logging "1.0.0"]
+                 [samsara/trackit-core "0.9.3"]
+                 [amalloy/ring-buffer "1.3.1"]]
 
   :global-vars {*warn-on-reflection* true}
 
   :jvm-opts ["-server"]
 
   :profiles {:dev {:resource-paths ["dev-resources"]
-                   :dependencies [[org.clojure/test.check "0.9.0"]
-                                  [midje "1.9.8"]
-                                  [org.slf4j/slf4j-log4j12 "1.7.26"]]
-                   :plugins [[lein-midje "3.2.1"]]}}
+                   :dependencies [[org.clojure/test.check "1.0.0"]
+                                  [midje "1.9.9"]
+                                  [org.slf4j/slf4j-log4j12 "1.7.30"]]
+                   :plugins [[lein-midje "3.2.2"]]}
 
-  :aliases {"test" ["do" "clean," "midje"]}
+             :clj18  {:dependencies [[org.clojure/clojure "1.8.0"]]}
+             :clj19  {:dependencies [[org.clojure/clojure "1.9.0"]]}
+             :clj110 {:dependencies [[org.clojure/clojure "1.10.1"]]}
+             }
+
+  :aliases {"test" ["do" "clean," "midje"]
+            "build-all"  ["with-profile" "+clj18:+clj19:+clj110" "do" "clean," "check," "midje," "jar"]}
   )
