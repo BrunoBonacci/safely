@@ -110,7 +110,7 @@ This is a quick ref-card of all possible configurable options:
  ;; to activate the circuit breaker just give a name to the operation
  :circuit-breaker :operation-name
 
- ;; the following options are ONLY used in conjunction with
+ ;; *PLEASE NOTE*: the following options are ONLY used in conjunction with
  ;; a circuit breaker
 
  ;; control the thread pool size for this operation
@@ -123,7 +123,8 @@ This is a quick ref-card of all possible configurable options:
  :sample-size       100
 
  ;; the number of milliseconds to wait before giving up
- :timeout           30000 ;; (millis, default wait forever)
+ ;; NOTE: it can be used only in conjunction with circuit-breaker
+ :timeout           30000 ;; (millis, default no timeout)
 
  ;; What to do with the request when the timeout time is
  ;; elapsed. :never, :if-not-running or :always
