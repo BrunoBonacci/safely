@@ -169,7 +169,8 @@ This is a quick ref-card of all possible configurable options:
  ;; to disable the stacktrace reporting in the logs
  :log-stacktrace false
 
- ;; and track the number of failure with the given metrics name
+ ;; and track the number of failures, latency, errors/success rate
+ ;; with the given metrics name
  :track-as "myproject.errors.mymodule.myaction"
 
  )
