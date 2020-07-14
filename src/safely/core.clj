@@ -2,8 +2,17 @@
   (:require [clojure.tools.logging :as log]
             [defun.core :refer [defun]]
             [safely.circuit-breaker :refer [execute-with-circuit-breaker]]
-            [samsara.trackit :refer [track-rate track-time]]))
+            [com.brunobonacci.mulog :as u]))
 
+
+
+;;
+;; TODO: add possibility to specify context for this call
+;; TODO: should circuit breaker state be propagated?
+;; TODO: remove documentation reference to Trackit
+;; TODO: add config doc to μ/log
+;; TODO: test if location info isn't present
+;; TODO: should tracking be always active even is when track-as isn't specified?
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -13,7 +22,17 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
+;;
+;; If true, it won't sleep at all. This is useful for testing
+;; purposes.  The code path will be the same (same number of retries),
+;; just no delay between calls.
+;;
 (def ^:dynamic *sleepless-mode* false)
+
+
+;;
+;; Internal defaults
+;;
 (def ^{:const true :no-doc true} defaults
   {:attempt           0
    :default           ::undefined
@@ -69,7 +88,7 @@
   "Replaces the deprecated options with their substitutions"
   [opts]
   (-> opts
-     (rename-key :max-retry :max-retries)))
+    (rename-key :max-retry :max-retries)))
 
 
 
@@ -84,31 +103,17 @@
 
 
 
-(defmacro outer-tracker
-  "utility macro to track execution time a tracker name is provided"
-  {:style/indent 1 :no-doc true}
-  [name & body]
-  `(let [name# ~name]
-     (if name#
-       (try (track-time (str name# ".outer") ~@body)
-            (catch Throwable x#
-              (track-rate (str name# ".outer_errors"))
-              (throw x#)))
-       (do ~@body))))
-
-
-
 (defmacro inner-tracker
   "utility macro to track execution time a tracker name is provided"
   {:style/indent 1 :no-doc true}
   [name & body]
   `(let [name# ~name]
      (if name#
-       (try (track-time (str name# ".inner") ~@body)
-            (catch Throwable x#
-              (track-rate (str name# ".inner_errors"))
-              (throw x#)))
+       (u/trace name#
+         [:safely/call-level :inner]
+         ~@body)
        (do ~@body))))
+
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -151,11 +156,11 @@
          size   (int (log10 base))
          factor (pow 10 size)]
      (map :value
-          (iterate (fn [{:keys [base size factor step] :as d}]
-                     (let [value (quot (*' factor (pow (/ base factor) (inc step))) 1)]
-                       (-> (assoc d :value value)
-                           (update :step inc))))
-                   {:size size :factor factor :base base :step 1 :value base})))))
+       (iterate (fn [{:keys [base size factor step] :as d}]
+                  (let [value (quot (*' factor (pow (/ base factor) (inc step))) 1)]
+                    (-> (assoc d :value value)
+                      (update :step inc))))
+         {:size size :factor factor :base base :step 1 :value base})))))
 
 
 
@@ -257,7 +262,7 @@
     (catch Throwable x
       (when log-errors
         (log/log log-ns log-level (when log-stacktrace x)
-                 (str message " @ " call-site ", reason: " (.getMessage ^Throwable x))))
+          (str message " @ " call-site ", reason: " (.getMessage ^Throwable x))))
       [nil x])))
 
 
@@ -266,27 +271,29 @@
   [{:keys [circuit-breaker track-as] :as cb-opts} [value failure error :as outcome]]
   (if-not track-as
     outcome
-    (let [track-prefix (str track-as ".circuit_breaker." (name circuit-breaker))]
-      (if (nil? failure)
-        ;; successful execution
-        (track-rate (str track-prefix ".success"))
+    outcome
+    ;; TODO: circuit breaker tracking
+    #_(let [track-prefix (str track-as ".circuit_breaker." (name circuit-breaker))]
+        (if (nil? failure)
+          ;; successful execution
+          (track-rate (str track-prefix ".success"))
 
-        ;; track all errors
-        (track-rate (str track-prefix ".errors.all")))
+          ;; track all errors
+          (track-rate (str track-prefix ".errors.all")))
 
-      (cond
-        ;; exception thrown
-        (= :error failure)        (track-rate (str track-prefix ".errors.execution"))
+        (cond
+          ;; exception thrown
+          (= :error failure)        (track-rate (str track-prefix ".errors.execution"))
 
-        ;; queue-full
-        (= :queue-full failure)   (track-rate (str track-prefix ".errors.queue_full"))
+          ;; queue-full
+          (= :queue-full failure)   (track-rate (str track-prefix ".errors.queue_full"))
 
-        ;; timeout
-        (= :timeout failure)      (track-rate (str track-prefix ".errors.timeout"))
+          ;; timeout
+          (= :timeout failure)      (track-rate (str track-prefix ".errors.timeout"))
 
-        ;; circuit-open
-        (= :circuit-open failure) (track-rate (str track-prefix ".errors.circuit_open")))
-      outcome)))
+          ;; circuit-open
+          (= :circuit-open failure) (track-rate (str track-prefix ".errors.circuit_open")))
+        outcome)))
 
 
 
@@ -295,8 +302,8 @@
   the :cause correctly populated."
   [circuit-breaker msg cause & {:as data}]
   (ex-info msg (assoc data :cause cause
-                      :origin ::circuit-breaker
-                      :circuit-breaker circuit-breaker)))
+                 :origin ::circuit-breaker
+                 :circuit-breaker circuit-breaker)))
 
 
 
@@ -320,28 +327,34 @@
 
 
 
-
 (defn- make-attempt-with-circuit-breaker
   [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts} f]
-  (let [[value error :as result] (->>
-                                  (execute-with-circuit-breaker f opts)
-                                  (track-error-type opts)
-                                  (normalize-failure opts))]
+  (let [ ;; transfer local-context to circuit-breaker thread
+        ctx u/*local-context*
+        f   (fn [] (u/with-context ctx (f)))
+        ;; enquque call
+        [value error :as result] (->> (execute-with-circuit-breaker f opts)
+                                   (track-error-type opts)
+                                   (normalize-failure opts))]
     ;; log error if required
     (when (and error log-errors)
       (log/log log-ns log-level (when log-stacktrace error)
-               (str message " @ " call-site ", reason: " (.getMessage ^Throwable error))))
+        (str message " @ " call-site ", reason: " (.getMessage ^Throwable error))))
     ;; return operation result
     result))
 
 
 
 (defn- make-attempt
-  [{:keys [circuit-breaker] :as opts} f]
-  (if circuit-breaker
-    (make-attempt-with-circuit-breaker opts f)
-    (make-attempt-direct opts f)))
-
+  [{:keys [circuit-breaker attempt max-retries timeout call-site] :as opts} f]
+  (u/with-context {:safely/circuit-breaker circuit-breaker
+                   :safely/attempt         attempt
+                   :safely/max-retries     max-retries
+                   :safely/timeout         (when-not (= timeout Long/MAX_VALUE) timeout)
+                   :safely/call-site       call-site}
+    (if circuit-breaker
+      (make-attempt-with-circuit-breaker opts f)
+      (make-attempt-direct opts f))))
 
 
 
@@ -554,10 +567,16 @@
         delayer (delay (apply sleeper (:retry-delay opts')))
         ;; instrument inner call
         f       (fn [] (inner-tracker (:track-as opts') (f)))]
-    (outer-tracker (:track-as opts')
+
+    ;; track time and outcome of the overall call.
+    (u/trace (:track-as opts') ;; TODO: what if not present?
+      [:mulog/namespace   (str (:log-ns opts')) ;; TODO: what if not present?
+       :safely/call-level :outer
+       :safely/call-site  (:call-site opts')]
+
       (loop [{:keys [message default max-retries attempt track-as
                      retryable-error? failed?] :as data} opts']
-        (let [[result ex] (make-attempt opts' f)]
+        (let [[result ex] (make-attempt data f)]
           ;; check execution outcome,
           ;; if it is not an error or a failed result, then..
           (if-not (or ex (failed? result))
@@ -804,13 +823,13 @@
     (deprecation-warning call-site# options)
     (if (not= 3 (count seg))
       (throw (IllegalArgumentException.
-              "Missing or invalid ':on-error' clause."))
+               "Missing or invalid ':on-error' clause."))
       `(safely-fn
-        (fn []
-          ~@body)
-        :log-ns *ns*
-        :call-site ~call-site#
-        ~@options))))
+         (fn []
+           ~@body)
+         :log-ns *ns*
+         :call-site ~call-site#
+         ~@options))))
 
 
 

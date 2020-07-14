@@ -263,93 +263,88 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 
-(facts
- ":max-retry is deprecated but should have the same behaviour of the new :max-retries"
+(facts ":max-retry is deprecated but should have the same behaviour of the new :max-retries"
 
- (facts
-  "using :max-retry to retry at most n times"
+  (facts "using :max-retry to retry at most n times"
 
+    (fact "using :max-retry to retry at most n times - max-retries reached with default value"
 
-  (fact
-   "using :max-retry to retry at most n times - max-retries reached with default value"
-
-   (count-attempts
-    (safely
-     (boom)
-     :on-error
-     :log-stacktrace false
-     :max-retry 3
-     :default 1)) => [1 4]
-   )
+      (count-attempts
+          (safely
+              (boom)
+            :on-error
+            :log-stacktrace false
+            :max-retry 3
+            :default 1)) => [1 4]
+      )
 
 
 
-  (fact
-   "using :max-retry to retry at most n times - if recover from failure value should be returned"
+    (fact "using :max-retry to retry at most n times - if recover from failure value should be returned"
 
-   (let [expr (crash-boom-bang!
-               #(boom)
-               (constantly 10))]
-     (count-attempts
-      (safely
-       (expr)
-       :on-error
-       :log-stacktrace false
-       :max-retry 3
-       :default 1))) => [10 2]
-   ))
+      (let [expr (crash-boom-bang!
+                   #(boom)
+                   (constantly 10))]
+        (count-attempts
+          (safely
+              (expr)
+            :on-error
+            :log-stacktrace false
+            :max-retry 3
+            :default 1))) => [10 2]
+      ))
 
 
 
 
- (fact
-  "using :max-retry without :default raises an exception"
+  (fact "using :max-retry without :default raises an exception"
 
-  (sleepless
-   (safely
-    (boom)
-    :on-error
-    :log-stacktrace false
-    :message "my explosion"
-    :max-retry 3)) => (throws Exception "my explosion")
+    (sleepless
+        (safely
+            (boom)
+          :on-error
+          :log-stacktrace false
+          :message "my explosion"
+          :max-retry 3)) => (throws Exception "my explosion")
 
-  )
-
+    )
 
 
 
- (fact
-  "using `:retryable-error?` predicate to filter which error should be retried
+
+  (fact "using `:retryable-error?` predicate to filter which error should be retried
   - not retryable error case"
 
-  (sleepless
-   (safely
-    (/ 1 0)
-    :on-error
-    :log-stacktrace false
-    :max-retry 5
-    :default 10
-    :retryable-error? #(not (#{ArithmeticException} (type %)))))
-  => (throws ArithmeticException)
+    (sleepless
+        (safely
+            (/ 1 0)
+          :on-error
+          :log-stacktrace false
+          :max-retry 5
+          :default 10
+          :retryable-error? #(not (#{ArithmeticException} (type %)))))
+    => (throws ArithmeticException)
 
-  )
-
-
+    )
 
 
- (fact
-  "using `:retryable-error?` predicate to filter which error should be retried
+
+
+  (fact "using `:retryable-error?` predicate to filter which error should be retried
   - retryable error case"
 
-  (sleepless
-   (safely
-    (boom)
-    :on-error
-    :log-stacktrace false
-    :max-retry 5
-    :default 10
-    :retryable-error? #(not (#{ArithmeticException} (type %)))))
-  => 10
+    (sleepless
+        (safely
+            (boom)
+          :on-error
+          :log-stacktrace false
+          :max-retry 5
+          :default 10
+          :retryable-error? #(not (#{ArithmeticException} (type %)))))
+    => 10
+
+    )
+  )
 
   )
  )
