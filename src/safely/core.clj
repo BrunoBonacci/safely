@@ -7,12 +7,12 @@
 
 
 ;;
-;; TODO: add possibility to specify context for this call
 ;; TODO: should circuit breaker state be propagated?
 ;; TODO: remove documentation reference to Trackit
 ;; TODO: add config doc to μ/log
 ;; TODO: test if location info isn't present
 ;; TODO: should tracking be always active even is when track-as isn't specified?
+;; TODO: add possibility to specify context for this call
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -101,18 +101,6 @@
     ;; if :max-retries is :forever, then retry as many times as you can
     (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
-
-
-(defmacro inner-tracker
-  "utility macro to track execution time a tracker name is provided"
-  {:style/indent 1 :no-doc true}
-  [name & body]
-  `(let [name# ~name]
-     (if name#
-       (u/trace name#
-         [:safely/call-level :inner]
-         ~@body)
-       (do ~@body))))
 
 
 
@@ -267,41 +255,12 @@
 
 
 
-(defn- track-error-type
-  [{:keys [circuit-breaker track-as] :as cb-opts} [value failure error :as outcome]]
-  (if-not track-as
-    outcome
-    outcome
-    ;; TODO: circuit breaker tracking
-    #_(let [track-prefix (str track-as ".circuit_breaker." (name circuit-breaker))]
-        (if (nil? failure)
-          ;; successful execution
-          (track-rate (str track-prefix ".success"))
-
-          ;; track all errors
-          (track-rate (str track-prefix ".errors.all")))
-
-        (cond
-          ;; exception thrown
-          (= :error failure)        (track-rate (str track-prefix ".errors.execution"))
-
-          ;; queue-full
-          (= :queue-full failure)   (track-rate (str track-prefix ".errors.queue_full"))
-
-          ;; timeout
-          (= :timeout failure)      (track-rate (str track-prefix ".errors.timeout"))
-
-          ;; circuit-open
-          (= :circuit-open failure) (track-rate (str track-prefix ".errors.circuit_open")))
-        outcome)))
-
-
-
 (defn- exception
   "Returns an exception originated from the circuit breaker and with
   the :cause correctly populated."
   [circuit-breaker msg cause & {:as data}]
-  (ex-info msg (assoc data :cause cause
+  (ex-info msg (assoc data
+                 :cause cause
                  :origin ::circuit-breaker
                  :circuit-breaker circuit-breaker)))
 
@@ -320,10 +279,10 @@
     (= :queue-full failure)   [nil (exception circuit-breaker "The circuit breaker queue is full" :queue-full)]
 
     ;; timeout
-    (= :timeout failure)      [nil (exception circuit-breaker "timeout" :timeout)]
+    (= :timeout failure)      [nil (exception circuit-breaker "The execution timed out" :timeout)]
 
     ;; circuit-open
-    (= :circuit-open failure) [nil (exception circuit-breaker "circuit-open" :circuit-open)]))
+    (= :circuit-open failure) [nil (exception circuit-breaker "The circuit is open" :circuit-open)]))
 
 
 
@@ -334,7 +293,6 @@
         f   (fn [] (u/with-context ctx (f)))
         ;; enquque call
         [value error :as result] (->> (execute-with-circuit-breaker f opts)
-                                   (track-error-type opts)
                                    (normalize-failure opts))]
     ;; log error if required
     (when (and error log-errors)
@@ -345,15 +303,66 @@
 
 
 
+(defmacro ^:private trace-direct-attempt
+  [opts & body]
+  `(let [opts# ~opts]
+     (u/trace (:track-as opts#)
+       {:pairs
+        [:mulog/namespace        (str (:log-ns opts#))
+         :safely/attempt         (:attempt opts#)
+         :safely/max-retries     (:max-retries opts#)
+         :safely/call-level      :inner
+         :safely/call-site       (:call-site opts#)
+         :safely/call-type       :direct]
+        :capture
+        (fn [[_# err#]]
+          (when err#
+            {:mulog/outcome :error
+             :exception err#}))}
+       ~@body)))
+
+
+(defmacro ^:private trace-circuit-breaker-attempt
+  [opts & body]
+  `(let [opts# ~opts]
+     (u/trace (:track-as opts#)
+       {:pairs
+        [:mulog/namespace        (str (:log-ns opts#))
+         :safely/attempt         (:attempt opts#)
+         :safely/max-retries     (:max-retries opts#)
+         :safely/call-level      :inner
+         :safely/call-site       (:call-site opts#)
+         :safely/call-type       :circuit-breaker
+         :safely/circuit-breaker (:circuit-breaker opts#)
+         :safely/timeout         (when-not (= (:timeout opts#) Long/MAX_VALUE) (:timeout opts#))]
+        :capture
+        (fn [[_# err#]]
+          (cond
+            ;; if successful
+            (nil? err#)
+            {:safely/circuit-breaker-outcome :success}
+
+            ;; failed from circuit breaker
+            (and (= ::circuit-breaker (:origin (ex-data err#)))
+              (= (:circuit-breaker opts#) (:circuit-breaker (ex-data err#))))
+            {:safely/circuit-breaker-outcome (:cause (ex-data err#))
+             :mulog/outcome :error
+             :exception err#}
+
+            (not= ::circuit-breaker (:origin (ex-data err#)))
+            {:safely/circuit-breaker-outcome :execution-error
+             :mulog/outcome :error
+             :exception err#}))}
+       ~@body)))
+
+
+
 (defn- make-attempt
-  [{:keys [circuit-breaker attempt max-retries timeout call-site] :as opts} f]
-  (u/with-context {:safely/circuit-breaker circuit-breaker
-                   :safely/attempt         attempt
-                   :safely/max-retries     max-retries
-                   :safely/timeout         (when-not (= timeout Long/MAX_VALUE) timeout)
-                   :safely/call-site       call-site}
-    (if circuit-breaker
-      (make-attempt-with-circuit-breaker opts f)
+  [{:keys [circuit-breaker attempt max-retries timeout call-site track-as] :as opts} f]
+  (if circuit-breaker
+    (trace-circuit-breaker-attempt opts
+      (make-attempt-with-circuit-breaker opts f))
+    (trace-direct-attempt opts
       (make-attempt-direct opts f))))
 
 
@@ -564,9 +573,7 @@
   (let [;; applying defaults
         opts'   (apply-defaults opts defaults)
         ;; lazy execution as only needed in case of error
-        delayer (delay (apply sleeper (:retry-delay opts')))
-        ;; instrument inner call
-        f       (fn [] (inner-tracker (:track-as opts') (f)))]
+        delayer (delay (apply sleeper (:retry-delay opts')))]
 
     ;; track time and outcome of the overall call.
     (u/trace (:track-as opts') ;; TODO: what if not present?
