@@ -3,6 +3,8 @@
             [safely.core :refer [shutdown-pools]])
   (:import clojure.lang.ExceptionInfo))
 
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
 ;;                     ---==| T E S T   U T I L S |==----                     ;;
@@ -61,12 +63,12 @@
 (defmacro run-thread [& body]
   `(let [result# (promise)]
      (.start
-      (Thread.
-       (fn []
-         (try
-           (deliver result# (do ~@body))
-           (catch Throwable x#
-             (deliver result# x#))))))
+       (Thread.
+         (fn []
+           (try
+             (deliver result# (do ~@body))
+             (catch Throwable x#
+               (deliver result# x#))))))
      result#))
 
 
@@ -96,9 +98,9 @@
        (with-state-changes
 
          [(before :facts
-                  (do
-                    (reset! cb-pools# {})
-                    (reset! cb-state# {})))
+            (do
+              (reset! cb-pools# {})
+              (reset! cb-state# {})))
           (after :facts (comment (safely.circuit-breaker/shutdown-pools)))]
 
          (fact ~@body)))))
@@ -114,12 +116,12 @@
                               :else (:cause (ex-data (.getCause ^ExceptionInfo e#)))))
          semaphore# (promise)
          results# (->> (range ~n)
-                       (map
+                    (map
                         (fn [_#]
                           (run-thread
-                           @semaphore#
-                           ~@body)))
-                       (doall))]
+                            @semaphore#
+                            ~@body)))
+                    (doall))]
      (deliver semaphore# :ok)
      (map (comp simplify-errors# deref) results#)))
 
@@ -128,12 +130,18 @@
 (defmacro simple-result
   [& body]
   `(let [simplify-errors# (fn [e#]
-                             (cond
-                               (not (instance? ExceptionInfo e#)) e#
-                               (nil? (:cause (ex-data (.getCause ^ExceptionInfo e#)))) e#
-                               :else (:cause (ex-data (.getCause ^ExceptionInfo e#)))))]
-      (simplify-errors#
+                            (cond
+                              (not (instance? ExceptionInfo e#)) e#
+                              (nil? (:cause (ex-data (.getCause ^ExceptionInfo e#)))) e#
+                              :else (:cause (ex-data (.getCause ^ExceptionInfo e#)))))]
+     (simplify-errors#
        (try
          ~@body
          (catch Throwable x#
            x#)))))
+
+
+
+(defn exception?
+  [x]
+  (instance? java.lang.Exception x))
