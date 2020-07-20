@@ -11,7 +11,7 @@
                  [org.clojure/core.match "1.0.0"]
                  [defun "0.3.1"]
                  [org.clojure/tools.logging "1.0.0"]
-                 [com.brunobonacci/mulog "0.3.0"]
+                 [com.brunobonacci/mulog "0.4.0-SNAPSHOT"]
                  [amalloy/ring-buffer "1.3.1"]]
 
   :global-vars {*warn-on-reflection* true}

@@ -289,7 +289,7 @@
 (defn- make-attempt-with-circuit-breaker
   [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts} f]
   (let [ ;; transfer local-context to circuit-breaker thread
-        ctx u/*local-context*
+        ctx com.brunobonacci.mulog.core/*local-context*
         f   (fn [] (u/with-context ctx (f)))
         ;; enquque call
         [value error :as result] (->> (execute-with-circuit-breaker f opts)
