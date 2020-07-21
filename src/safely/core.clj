@@ -289,7 +289,7 @@
 (defn- make-attempt-with-circuit-breaker
   [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts} f]
   (let [ ;; transfer local-context to circuit-breaker thread
-        ctx com.brunobonacci.mulog.core/*local-context*
+        ctx (u/local-context)
         f   (fn [] (u/with-context ctx (f)))
         ;; enquque call
         [value error :as result] (->> (execute-with-circuit-breaker f opts)
@@ -577,9 +577,10 @@
 
     ;; track time and outcome of the overall call.
     (u/trace (:track-as opts') ;; TODO: what if not present?
-      [:mulog/namespace   (str (:log-ns opts')) ;; TODO: what if not present?
-       :safely/call-level :outer
-       :safely/call-site  (:call-site opts')]
+      [:mulog/namespace        (str (:log-ns opts')) ;; TODO: what if not present?
+       :safely/call-level      :outer
+       :safely/call-site       (:call-site opts')
+       :safely/circuit-breaker (:circuit-breaker opts')]
 
       (loop [{:keys [message default max-retries attempt track-as
                      retryable-error? failed?] :as data} opts']

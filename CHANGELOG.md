@@ -1,5 +1,10 @@
 # CHANGELOG
 
+
+## Version 0.7.0 (unreleased)
+  * [**NEW**] Migrated tracking to [***μ/log***](https://github.com/BrunoBonacci/mulog)
+
+
 ## Version 0.5.0 (released: 2020-03-01)
 
   * [**NEW**] Introduced **circuit-breaker** functionality
