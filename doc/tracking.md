@@ -1,4 +1,4 @@
-# Observability with `safely`
+# Observability with safely
 
 `safely` has a comprehensive tracking system.
 
@@ -15,9 +15,14 @@ From version `0.7.0`, `safely` internally uses a library called
 logging and tracing.
 
 Out of the box by just adding the `:track-as` option in a safely block
-you get instrumentation metrics about how many times the safely block
-is executed, at what rate (calls per second), and various percentiles
-about the execution times.
+you get tracing instrumentation of the safely block.  The
+instrumentation is done at two levels: *the inner block the outer
+block*.
+
+The inner block is the code expression which will be executed
+potentially multiple times. The outer block is executed only
+once per evaluation.
+
 
 For example let's take a look at the following code snippet:
 
