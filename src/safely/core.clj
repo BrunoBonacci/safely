@@ -7,11 +7,10 @@
 
 
 ;;
-;; TODO: should circuit breaker state be propagated?
 ;; TODO: remove documentation reference to Trackit
 ;; TODO: add config doc to μ/log
-;; TODO: test if location info isn't present
-;; TODO: should tracking be always active even is when track-as isn't specified?
+;; TODO: `:track-as` now defaults to location when available
+;; TODO: add option to disable tracking altogether
 ;; TODO: add possibility to specify context for this call
 
 
@@ -96,8 +95,10 @@
   (as-> cfg $
     (conform-deprecations $)
     (merge defaults $)
-    ;; if failed? is provided user failed? otherwise is false
+    ;; if `failed?` is provided then use it otherwise is always false
     (update $ :failed? (fn [p?] (or p? (constantly false))))
+    ;; if `:track-as` is provided then use it, otherwise use the `:call-site` if available
+    (update $ :track-as (fn [t] (or t (:call-site $))))
     ;; if :max-retries is :forever, then retry as many times as you can
     (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
 
@@ -577,7 +578,7 @@
 
     ;; track time and outcome of the overall call.
     (u/trace (:track-as opts') ;; TODO: what if not present?
-      [:mulog/namespace        (str (:log-ns opts')) ;; TODO: what if not present?
+      [:mulog/namespace        (some-> (:log-ns opts') str)
        :safely/call-level      :outer
        :safely/call-site       (:call-site opts')
        :safely/circuit-breaker (:circuit-breaker opts')]

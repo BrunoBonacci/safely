@@ -380,3 +380,63 @@
     )
 
   )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;               ----==| T R A C K I N G   C O N F I G |==----                ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fact "if `:track-as` isn't defined it should default to `:call-site`"
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (+ 1 1)
+        :on-error
+        :default 0)))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  ;; checking general structure
+  *result* =>
+  (just [(contains
+           {:mulog/duration integer?,
+            :mulog/event-name #"safely.tracking-test.*",
+            :mulog/namespace "safely.tracking-test",
+            :mulog/outcome :ok,
+            :mulog/timestamp integer?,
+            :safely/call-level :inner,
+            :safely/call-site #"safely.tracking-test.*",
+            :safely/call-type :direct,
+            :safely/max-retries 0,
+            :safely/attempt 0,})
+         (contains
+           {:mulog/event-name #"safely.tracking-test.*",
+            :mulog/namespace "safely.tracking-test",
+            :mulog/outcome :ok,
+            :mulog/parent-trace nil,
+            :mulog/timestamp integer?,
+            :safely/call-level :outer,
+            :safely/call-site #"safely.tracking-test.*",
+            :mulog/duration integer?
+            })])
+
+  )
+
+
+(fact "if `:track-as` isn't defined it should default to `:call-site`,
+       if `:call-site` isn't available then, no logging."
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely-fn
+        #(+ 1 1)
+        :default 0)))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 0
+
+  )
