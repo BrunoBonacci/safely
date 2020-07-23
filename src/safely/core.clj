@@ -570,18 +570,6 @@
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
-  "
-        Will use the given keyword or string as name for the event. Use
-        names which will be clearly specifying the which part of your code
-        you are tracking, for example: `::db-save` and `::fect-user` clearly
-        specify which action if currently failing. Use namespaced keywords,
-        or fully-qualified actions \"mymodule.myaction\" for avoiding
-        name-conflicts.  Use `mulog/set-global-context!` to add general info
-        such application name, version, environment, host etc. The tracking
-        is done via ***μ/log*** (https://github.com/BrunoBonacci/mulog).  If
-        `:track-as` is not provided, its source code location will be used
-        instead. _All `safely` blocks are tracked by default._
-"
 
   [f & {:as opts}]
   (let [;; applying defaults
