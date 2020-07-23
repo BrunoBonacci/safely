@@ -9,8 +9,8 @@
    [ring.adapter.jetty :refer [run-jetty]]
    ;; safely
    [safely.core :refer [safely]]
-   ;; reporting metrics
-   [samsara.trackit :refer [start-reporting!]])
+   ;; reporting events
+   [com.brunobonacci.mulog :as u])
   (:gen-class))
 
 
@@ -89,14 +89,23 @@
 
 ;; application main
 (defn -main []
-  (println "Reporting metrics to Influxdb on localhost:8086")
-  (start-reporting!
-   {:type                        :influxdb
-    :reporting-frequency-seconds 10
-    :host                        "localhost"
-    :port                        8086
-    :prefix                      "trackit"
-    :db-name                     "metrics"
-    :auth                        "user1:pass1"})
+  (println "Reporting metrics to Elastisearch @ http://localhost:9000/")
+
+  ;; set global context
+  (μ/set-global-context!
+    {:app-name "safely.examples.web-api", :version "0.1.0", :env "local"})
+
+  (u/start-publisher!
+    :type :multi
+    :publishers
+    [;; send events to the stdout
+     ;;{:type :console :pretty? true}
+     ;; send events to a file
+     {:type :simple-file :filename "/tmp/mulog/events.log"}
+     ;; send events to ELS
+     {:type :elasticsearch :url  "http://localhost:9200/"}
+     ;; send events to zipkin
+     {:type :zipkin :url  "http://localhost:9411/"}
+     ])
   (println "Starting server on port 8000")
   (run-jetty app {:port 8000}))

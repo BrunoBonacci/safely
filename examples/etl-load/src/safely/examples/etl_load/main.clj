@@ -2,39 +2,36 @@
   (:gen-class)
   (:require [safely.examples.etl-load.core :refer [DEFAUL-CFG load-records-from-file]]
             [safely.examples.etl-load.gen-file :refer [gen-records]]
-            [samsara.trackit :as trackit])
+            [com.brunobonacci.mulog :as u])
   (:import java.util.concurrent.TimeUnit))
 
 
 
 (defn- init-reporting! []
-  (trackit/start-reporting!
-   {:type                        :influxdb
-    ;; disable JVM metrics publishing
-    :jvm-metrics                 :none
-    ;; how often the stats will be reported to the server
-    :reporting-frequency-seconds 10
-    ;; riemann host and port
-    :host                        (or (System/getenv "INFLUXDB_HOST") "localhost")
-    :port                        (Integer/parseInt (or (System/getenv "INFLUXDB_PORT") "8086"))
-    ;; unit to use to display rates
-    :rate-unit                   TimeUnit/SECONDS
-    ;; unit to use to display durations
-    :duration-unit               TimeUnit/MILLISECONDS
-    ;; prefix to add to all metrics
-    :prefix                      "trackit"
-    :db-name                     (or (System/getenv "INFLUXDB_DBNAME") "telegraf")
-    :auth                        (when (System/getenv "INFLUXDB_USER")
-                                   (str (System/getenv "INFLUXDB_USER") ":"
-                                        (System/getenv "INFLUXDB_PASS")))
-    }))
+  ;; set global context
+  (μ/set-global-context!
+    {:app-name "safely.examples.etl-load", :version "0.1.0", :env "local"})
+
+  (u/start-publisher!
+    :type :multi
+    :publishers
+    [;; send events to the stdout
+     ;;{:type :console :pretty? true}
+     ;; send events to a file
+     {:type :simple-file :filename "/tmp/mulog/events.log"}
+     ;; send events to ELS
+     {:type :elasticsearch :url  "http://localhost:9200/"}
+     ;; send events to zipkin
+     {:type :zipkin :url  "http://localhost:9411/"}
+     ])
+  )
 
 
 
 (defn help
   []
   (println
-   "
+    "
 You can set the following environment variables to change default settings:
 
   export AWS_ACCESS_KEY_ID='xxx'
@@ -51,25 +48,6 @@ You can set the following environment variables to change default settings:
 
   export WRITE_CAPACITY=500
     - to set the DynamoDB initial write capacity (used only on creation)
-
-  export INFLUXDB_HOST=localhost
-  export INFLUXDB_PORT=8086
-  export INFLUXDB_DBNAME=telegraf
-  export INFLUXDB_USER=
-  export INFLUXDB_PASS=
-    - to send metrics to a InfluxDB
-
-  for a local instance run:
-  docker run -d -p 3003:3003 -p 8086:8086 samuelebistoletti/docker-statsd-influxdb-grafana:2.0.0
-
-  then connect to Open http://localhost:3003 (credentials: root/root)
-  and add the following two metrics in a graph.
-
-  SELECT last(\"m1_rate\") FROM \"safely.examples.etl_load.save_record.inner\"
-     WHERE $timeFilter GROUP BY time($interval) fill(null)
-
-  SELECT last(\"m1_rate\") FROM \"safely.examples.etl_load.save_record.inner_errors\"
-     WHERE $timeFilter GROUP BY time($interval) fill(null)
 
 Usage:
 

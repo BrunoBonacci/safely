@@ -18,16 +18,19 @@ The library offers out of the box:
 
 ## Usage
 
-Check the online [Documentation](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT)
-
 Add the dependency into your `project.clj`.
 
 ``` clojure
-;; stable version with circuit breaker
+;; new version with μ/log tracking
+[com.brunobonacci/safely "0.7.0-SNAPSHOT"]
+
+;; stable version
 [com.brunobonacci/safely "0.5.0"]
 ```
 
-Current version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
+  * Latest version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
+  * Online [Documentation latest version](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT).
+  * Online [Documentation v0.5.0](https://cljdoc.org/d/com.brunobonacci/safely/0.5.0)
 
 
 Require the namespace:
@@ -569,7 +572,7 @@ In this case we disable the error logging for the given block.
   :log-errors false)
 ```
 
-### Automatic errors tracking (monitoring)
+### Automatic tracking (monitoring)
 
 If you have (and you should) a monitoring system which track application
 metrics as well then you can track automatically how many times a
@@ -578,13 +581,17 @@ particular section protected by safely is running into errors.
 To do so all you need to do is to give a name to the section you are
 protecting with safely with:
 
-* `:track-as "myproject.mymodule.myaction"`
-  Will use the given string as name for the metric. Use names which
-  will be clearly specifying the which part of your code is failing
-  for example: "app.db.writes" and
-  "app.services.account.fetchuser" clearly specify which action
-  if currently failing. The tracking is done via Samsara/TrackIt!
-  (see: https://github.com/samsara/trackit)
+* `:track-as ::action-name`
+  Will use the given keyword or string as name for the event. Use
+  names which will be clearly specifying the which part of your code
+  you are tracking, for example: `::db-save` and `::fect-user` clearly
+  specify which action if currently failing. Use namespaced keywords,
+  or fully-qualified actions "mymodule.myaction" for avoiding
+  name-conflicts.  Use `mulog/set-global-context!` to add general info
+  such application name, version, environment, host etc. The tracking
+  is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
+  `:track-as` is not provided, its source code location will be used
+  instead. _All `safely` blocks are tracked by default._
 
 For example:
 
@@ -595,13 +602,15 @@ For example:
   :on-error
   :max-retries 3
   :retry-delay [:random-range :min 2000 :max 5000]
-  :track-as "myapp.services.users.fetch-active"
+  :track-as ::fetch-active
   :circuit-breaker :fetch-active-users)
 ```
 
-This will track a number of interesting metrics about this single
-block and publish them to a variety of monitoring systems. For more
-information you can see the [tracking](./doc/tracking.md) page.
+This will track the call events providing a number of interesting
+information about this single block and publish them to a variety of
+monitoring systems. For more information you can see the
+[tracking](./doc/tracking.md) page.
+
 
 ### Circuit breaker.
 

@@ -1,9 +1,18 @@
-# Safely tracking.
+# Observability with `safely`
 
-`safely` has a comprehensive metering system.  Internally it uses a
-library called [TRACKit!](https://github.com/samsara/trackit) which in
-turns it is a wrapper for the popular [Dropwizard's
-Metrics](https://github.com/dropwizard/metrics) library.
+`safely` has a comprehensive tracking system.
+
+> Prior version `0.7.0`, `safely` relied on a library called
+> [TRACKit!](https://github.com/samsara/trackit) which in turns it is a
+> wrapper for the popular [Dropwizard's
+> Metrics](https://github.com/dropwizard/metrics) library.  So if you
+> are using an older version please refer to the online documentation:
+> [`safely-0.5.0` tracking](https://cljdoc.org/d/com.brunobonacci/safely/0.5.0/doc/safely-tracking-)
+
+
+From version `0.7.0`, `safely` internally uses a library called
+[***μ/trace***](https://github.com/BrunoBonacci/mulog) for event-based
+logging and tracing.
 
 Out of the box by just adding the `:track-as` option in a safely block
 you get instrumentation metrics about how many times the safely block
@@ -13,89 +22,187 @@ about the execution times.
 For example let's take a look at the following code snippet:
 
 ``` clojure
+(ns your.ns)
+
 (safely                                          \
                                                  |
   ;; an external call                 \          |
   (users/load-user :id "d548a66b")    | Inner    |
                                       /          | Outer
   :on-error                                      |
-  :max-retries 5                                 |
-  :default   nil                                 |
-  :track-as  "myapp.mymodule.loadUser")          /
+  :max-retries 3                                 |
+  :default     nil                               |
+  :track-as    ::load-user)                      /
 ```
 
 The `users/load-user` call is in a safely block, and we have added the
-`:track-as "myapp.mymodule.loadUser"` option. In this case `safely`
-will automatically instrument and push metrics based on the following
-groups:
+`:track-as :your.ns/load-user` option. In this case `safely` will
+automatically instrument and push events with the following structure:
+
+  * 1 event for every attempt (inner execution)
+  * 1 event for the overall `safely` block execution (outer)
+
+So if we assume that in one instance of this execution the inner call
+failed twice before succeeding the we will have in total **4 events**:
+
+  * two failed attempts (`:safely/attempt 0` and `:safely/attempt 1`)
+    with `:mulog/outcome :error` and the exception generated in the
+    `:exception` value.
+  * one successful attempt (`:safely/attempt 2`) with `:mulog/outcome :ok`
+  * one event with describes the outer call (`:safely/call-level :outer`)
+    with the overall `:mulog/outcome :ok`
+  * all the events will have the starting `:mulog/timestamp` and the duration
+  (`:mulog/duration`) expressed in **nanoseconds**.
+  * All the events have a bunch of IDs to identify the records and
+    their logical relationship.
+  * If an error occurred, the `:exception` key will contain the actual exception.
+  * If the application user defined a *global-context* or
+    *local-context*, the events will inherit all of those (see:
+    [μ/log - use of context](https://github.com/BrunoBonacci/mulog#use-of-context)).
+    In our example we assume `:app-name`, `:version` and `:env` where
+    set via global context.
+
+Here the events with all the details.
+
+<details>
+  <summary><strong>Click to show details</strong></summary>
+
+``` clojure
+{:mulog/event-name :your.ns/load-user,
+ :mulog/timestamp 1595529674636,
+ :mulog/trace-id #mulog/flake "4XEQAD_Z_W2zwXpyCPOMnVtsDBXvzzt5",
+ :mulog/root-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/parent-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/duration 259125129,
+ :mulog/namespace "your.ns",
+ :mulog/outcome :error,
+ :app-name "safely-demo",
+ :env "local",
+ :exception #error {
+   :cause "Connection timeout!"
+   :data {:cause :timeout}
+   :via
+   [{:type clojure.lang.ExceptionInfo
+     :message "Connection timeout!"
+     :data {:cause :timeout}
+     :at [clojure.core$ex_info invokeStatic "core.clj" 4617]}]
+   :trace
+   [[..full stack trace..]
+    [...] ;; stack omitted for brevity
+    [clojure.lang.AFn run "AFn.java" 22]
+    [java.lang.Thread run "Thread.java" 832]]},
+ :version "1.2.3",
+ :safely/attempt 0,
+ :safely/call-level :inner,
+ :safely/call-site "your.ns[l:2264, c:5]",
+ :safely/call-type :direct,
+ :safely/max-retries 3}
+
+{:mulog/event-name :your.ns/load-user,
+ :mulog/timestamp 1595529675338,
+ :mulog/trace-id #mulog/flake "4XEQAGBpt66OLi5Ut97GRRJvLzjdgBrI",
+ :mulog/root-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/parent-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/duration 406038359,
+ :mulog/namespace "your.ns",
+ :mulog/outcome :error,
+ :app-name "safely-demo",
+ :env "local",
+ :exception #error {
+   :cause "Connection timeout!"
+   :data {:cause :timeout}
+   :via
+   [{:type clojure.lang.ExceptionInfo
+     :message "Connection timeout!"
+     :data {:cause :timeout}
+     :at [clojure.core$ex_info invokeStatic "core.clj" 4617]}]
+   :trace
+   [[..full stack trace..]
+    [...] ;; stack omitted for brevity
+    [clojure.lang.AFn run "AFn.java" 22]
+    [java.lang.Thread run "Thread.java" 832]]},
+ :version "1.2.3",
+ :safely/attempt 1,
+ :safely/call-level :inner,
+ :safely/call-site "your.ns[l:2264, c:5]",
+ :safely/call-type :direct,
+ :safely/max-retries 3}
+
+{:mulog/event-name :your.ns/load-user,
+ :mulog/timestamp 1595529676867,
+ :mulog/trace-id #mulog/flake "4XEQALtOcmYzqPzVyYXnG84N4ykloTky",
+ :mulog/root-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/parent-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/duration 340710808,
+ :mulog/namespace "your.ns",
+ :mulog/outcome :ok,
+ :app-name "safely-demo",
+ :env "local",
+ :version "1.2.3",
+ :safely/attempt 2,
+ :safely/call-level :inner,
+ :safely/call-site "your.ns[l:2264, c:5]",
+ :safely/call-type :direct,
+ :safely/max-retries 3}
+
+{:mulog/event-name :your.ns/load-user,
+ :mulog/timestamp 1595529674636,
+ :mulog/trace-id #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/root-trace #mulog/flake "4XEQAD_ZMyVfusmOHGfUXwny4aKKuSSV",
+ :mulog/duration 2571433163,
+ :mulog/namespace "your.ns",
+ :mulog/outcome :ok,
+ :app-name "safely-demo",
+ :env "local",
+ :version "1.2.3",
+ :safely/call-level :outer,
+ :safely/call-site "your.ns[l:2264, c:5]",
+ :safely/circuit-breaker nil}
 
 ```
-<track-as>.inner
-<track-as>.outer
-<track-as>.inner_errors
-<track-as>.outer_errors
+</details>
+
+
+***μ/log*** has the possibility to publish all these events to various
+systems. It is recommended to use
+[Elasticsearch](https://www.elastic.co/elasticsearch/) to search and
+quickly aggregates quantitative measure across all the events, but
+there are a number of supported systems where you can send the events
+for further processing, aggregation, alerting, please refer to
+[μ/log documentation](https://github.com/BrunoBonacci/mulog) for a
+complete list of available publishers.
+
+One of the systems that works well with `safely` is
+[Zipkin](https://zipkin.io/) (or any OpenZipkin compatible system) for
+distributed tracking.  All `safely` blocks are automatically
+instrumented with ***μ/trace*** which provides events in a format
+which is compatible to distributed tracing, hence, by activating the
+Zipkin publisher as follow:
+
+``` clojure
+(μ/start-publisher!
+  {:type :zipkin
+   :url  "http://localhost:9411/"})
 ```
 
-The `.inner` group refers call container inside the block, in our
-example it is just the `users/load-user` call. While the `.outer`
-refers to the entire `safely` block as perceived by the caller.
+you can get the above events in the form of traces:
 
-For example here are the metrics which will be pushed just by adding a
-single `:track-as` line.
+![mulog tracing](./images/mulog-tracing.png)
 
-```
-myapp.mymodule.loadUser.inner
-             count = 41791                  >- execution count
-         mean rate = 182.41 calls/second    \
-     1-minute rate = 186.48 calls/second    |_ execution rate
-     5-minute rate = 100.60 calls/second    |
-    15-minute rate = 45.20 calls/second     /
-               min = 32.37 milliseconds     \
-               max = 117.19 milliseconds    |
-              mean = 42.04 milliseconds     |
-            stddev = 7.74 milliseconds      |
-            median = 40.45 milliseconds     |_ execution time
-              75% <= 43.39 milliseconds     |
-              95% <= 53.48 milliseconds     |
-              98% <= 62.67 milliseconds     |
-              99% <= 74.44 milliseconds     |
-            99.9% <= 117.19 milliseconds    /
 
-myapp.mymodule.loadUser.outer
-             count = 41791
-         mean rate = 182.26 calls/second
-     1-minute rate = 186.34 calls/second
-     5-minute rate = 97.71 calls/second
-    15-minute rate = 40.50 calls/second
-               min = 32.39 milliseconds
-               max = 79.93 milliseconds
-              mean = 41.18 milliseconds
-            stddev = 5.97 milliseconds
-            median = 39.84 milliseconds
-              75% <= 42.67 milliseconds
-              95% <= 51.92 milliseconds
-              98% <= 60.91 milliseconds
-              99% <= 69.67 milliseconds
-            99.9% <= 79.93 milliseconds
+Each blueish block (span) corresponds to an attempt, the size of the
+span correspond to the `:mulog/duration` and the top level span is the
+**outer** call. All the additional information available in the events will be pushed as tags
+and therefore can be queried by the Zipkin interface.
 
-myapp.mymodule.loadUser.inner_errors
-             count = 33                     >- errors count
-         mean rate = 0.14 events/second     \
-     1-minute rate = 0.16 events/second     |_ errors rate
-     5-minute rate = 2.98 events/second     |
-    15-minute rate = 4.86 events/second     /
+<details>
+  <summary>Click to show</summary>
 
-myapp.mymodule.loadUser.outer_errors
-             count = 0
-         mean rate = 0.0 events/second
-     1-minute rate = 0.0 events/second
-     5-minute rate = 0.0 events/second
-    15-minute rate = 0.0 events/second
-```
+![mulog-zipkin-details](./images/mulog-zipkin-details.png)
 
-All these metrics can be published to a variety of monitoring systems.
-For more information about reporting metrics please refer to
-[TRACKit!](https://github.com/samsara/trackit) documentation.
+</details>
+
+
 
 If you are using a *circuit-breaker* with `safely` the following
 additional metrics are published.
@@ -109,44 +216,32 @@ For example let's take a look at the following code snippet:
   (users/load-user :id "d548a66b")
 
   :on-error
-  :max-retries 5
-  :default   nil
-  :track-as  "myapp.mymodule.loadUser"
-  :circuit-breaker :userLoad)
+  :max-retries 3
+  :default     nil
+  :track-as    ::load-user
+  :circuit-breaker :user-service)
 ```
 
-With the `:circuit-breaker :userLoad`, in addition to the previous
-metrics, the following metrics will be published as well:
+In this case in addition to all the previous information,
+each event will contain also the following keys:
 
-```
-<track-as>.circuit_breaker.<cb-name>.errors.execution
-<track-as>.circuit_breaker.<cb-name>.errors.queue_full
-<track-as>.circuit_breaker.<cb-name>.errors.timeout
-<track-as>.circuit_breaker.<cb-name>.errors.circuit_open
-```
+``` clojure
+;; which circuit-breaker is in use with the block
+:safely/circuit-breaker :user-service
 
-With the count and rate of the particular error type, for example:
-```
-myapp.mymodule.loadUser.circuit_breaker.userLoad.errors.queue_full
-             count = 0
-         mean rate = 0.0 events/second
-     1-minute rate = 0.0 events/second
-     5-minute rate = 0.0 events/second
-    15-minute rate = 0.0 events/second
+;; if a timeout is set via the `:timeout` option it will
+;; appear in the `:inner` calls, `nil` otherwise.
+:safely/timeout nil
+
+;; if the circuit breaker is blocking a call or is successful
+:safely/circuit-breaker-outcome :success
 ```
 
-Where:
+The key `:safely/circuit-breaker-outcome` will have one of the following values:
 
-  * `.errors.execution` represents the errors triggered by the inner
-    execution block. Typically the actual external call.
-  * `.errors.queue_full` is triggered when the circuit-breaker request
-    queue if full. It typically means that the external system is
-    getting slower and it is trying to generate some back pressure. If
-    situation doesn't recover the circuit will be triggered open.
-    In this case it is NOT a good idea to increase the queue size.
-  * `.errors.timeout` - this error is triggered when the external
-    system (or inner block) call is taking longer than you are willing
-    to wait for.
-  * `.errors.circuit_open` - This error is triggered when the system
-    is trying to process requests while the circuit is open. In this
-    case requested are rejected immediately.
+  * `:success` - inner block successfully executed
+  * `:execution-error` - refers to an error in the execution of the inner block.
+  * `:timeout` - the inner block execution didn't complete in time.
+  * `:queue-full` - when the processing queue can't accept more items.
+  * `:circuit-open` - when the circuit breaker is `open` and all
+    requests are rejected for a certain amount of time.

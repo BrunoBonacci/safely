@@ -6,10 +6,6 @@
 
 
 
-;;
-;; TODO: remove documentation reference to Trackit
-;; TODO: add config doc to μ/log
-;; TODO: `:track-as` now defaults to location when available
 ;; TODO: add option to disable tracking altogether
 ;; TODO: add possibility to specify context for this call
 
@@ -560,16 +556,33 @@
    in your monitoring system of choice by just adding the name under which
    you want to track this error. By default is not enabled.
 
-     - `:track-as \"myproject.errors.mymodule.myaction\"`
-        Will use the given string as name for the metric. Use names which
-        will be clearly specifying the which part of your code is failing
-        for example: `\"app.errors.db.writes\"`
-        and `\"app.errors.services.account.fetchuser\"` clearly specify
-        which action is currently failing. The tracking is done via
-        Samsara/TrackIt! (see: https://github.com/samsara/trackit)
+     - `:track-as ::action-name`
+        Will use the given keyword or string as name for the event. Use
+        names which will be clearly specifying the which part of your code
+        you are tracking, for example: `::db-save` and `::fect-user` clearly
+        specify which action if currently failing. Use namespaced keywords,
+        or fully-qualified actions \"mymodule.myaction\" for avoiding
+        name-conflicts.  Use `mulog/set-global-context!` to add general info
+        such application name, version, environment, host etc. The tracking
+        is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
+        `:track-as` is not provided, its source code location will be used
+        instead. _All `safely` blocks are tracked by default._
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
+  "
+        Will use the given keyword or string as name for the event. Use
+        names which will be clearly specifying the which part of your code
+        you are tracking, for example: `::db-save` and `::fect-user` clearly
+        specify which action if currently failing. Use namespaced keywords,
+        or fully-qualified actions \"mymodule.myaction\" for avoiding
+        name-conflicts.  Use `mulog/set-global-context!` to add general info
+        such application name, version, environment, host etc. The tracking
+        is done via ***μ/log*** (https://github.com/BrunoBonacci/mulog).  If
+        `:track-as` is not provided, its source code location will be used
+        instead. _All `safely` blocks are tracked by default._
+"
+
   [f & {:as opts}]
   (let [;; applying defaults
         opts'   (apply-defaults opts defaults)
@@ -811,13 +824,17 @@
    in your monitoring system of choice by just adding the name under which
    you want to track this error. By default is not enabled.
 
-     - `:track-as \"myproject.errors.mymodule.myaction\"`
-        Will use the given string as name for the metric. Use names which
-        will be clearly specifying the which part of your code is failing
-        for example: `\"app.errors.db.writes\"`
-        and `\"app.errors.services.account.fetchuser\"` clearly specify
-        which action is currently failing. The tracking is done via
-        Samsara/TrackIt! (see: https://github.com/samsara/trackit)
+     - `:track-as ::action-name`
+        Will use the given keyword or string as name for the event. Use
+        names which will be clearly specifying the which part of your code
+        you are tracking, for example: `::db-save` and `::fect-user` clearly
+        specify which action if currently failing. Use namespaced keywords,
+        or fully-qualified actions \"mymodule.myaction\" for avoiding
+        name-conflicts.  Use `mulog/set-global-context!` to add general info
+        such application name, version, environment, host etc. The tracking
+        is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
+        `:track-as` is not provided, its source code location will be used
+        instead. _All `safely` blocks are tracked by default._
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "

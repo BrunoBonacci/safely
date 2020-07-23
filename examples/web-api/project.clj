@@ -17,7 +17,7 @@
                  [ring/ring-defaults "0.3.2"]
                  [ring/ring-json "0.4.0"]
                  [org.slf4j/slf4j-log4j12 "1.7.25"]
-                 [com.brunobonacci/safely "0.5.0"]
-                 [samsara/trackit-influxdb "0.8.0"
-                  :exclusions [org.slf4j/log4j-over-slf4j
-                               ch.qos.logback/logback-classic]]])
+                 [com.brunobonacci/safely "0.7.0-SNAPSHOT"]
+                 [com.brunobonacci/mulog "0.4.0-SNAPSHOT"]
+                 [com.brunobonacci/mulog-elasticsearch "0.4.0-SNAPSHOT"]
+                 [com.brunobonacci/mulog-zipkin "0.4.0-SNAPSHOT"]])
