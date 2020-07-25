@@ -613,9 +613,9 @@ information about this single block and publish them to a variety of
 monitoring systems. For more information you can see the
 [tracking](./doc/tracking.md) page.
 
-With ***μ/trace*** your `safely` expressions turn into traces which
-you can visualise with [OpenZipkin](https://zipkin.io/) compatible
-tracers.
+With [***μ/trace***](https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
+your `safely` expressions turn into traces which you can visualise
+with [OpenZipkin](https://zipkin.io/) compatible tracers.
 
 Here is one example:
 
@@ -810,8 +810,8 @@ as follow:
   * `W = 25 millis -> 0.025s`
   * then we can deduce that `L` for the whole system is going to be:
   * `L = λW -> 5000 rq/s * 0.025 s -> L = 125`
-  * So it means that the whole system will have a average of 125
-    concurrent requests when processing 5000 rq/s.
+  * So it means that the whole system will have an average of `125`
+    concurrent requests when processing `5000 rq/s`.
   * Since every instance follow the Little's law as well and
     since all the instances have typically the same probability
     to get a request (via a load balancer), then it is safe
