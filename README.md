@@ -613,6 +613,14 @@ information about this single block and publish them to a variety of
 monitoring systems. For more information you can see the
 [tracking](./doc/tracking.md) page.
 
+With ***μ/trace*** your `safely` expressions turn into traces which
+you can visualise with [OpenZipkin](https://zipkin.io/) compatible
+tracers.
+
+Here is one example:
+
+![mulog tracing](./doc/images/mulog-tracing.png)
+
 
 ### Circuit breaker.
 
