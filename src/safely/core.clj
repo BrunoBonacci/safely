@@ -6,10 +6,6 @@
 
 
 
-;; TODO: add option to disable tracking altogether
-;; TODO: add possibility to specify context for this call
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
 ;;                      ----==| D E A F U L T S |==----                       ;;
@@ -23,6 +19,7 @@
 ;; just no delay between calls.
 ;;
 (def ^:dynamic *sleepless-mode* false)
+
 
 
 ;;
@@ -97,7 +94,6 @@
     (update $ :track-as (fn [t] (or t (:call-site $))))
     ;; if :max-retries is :forever, then retry as many times as you can
     (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
-
 
 
 
@@ -306,6 +302,7 @@
      (u/trace (:track-as opts#)
        {:pairs
         [:mulog/namespace        (str (:log-ns opts#))
+         :mulog/origin           :safely.core
          :safely/attempt         (:attempt opts#)
          :safely/max-retries     (:max-retries opts#)
          :safely/call-level      :inner
@@ -319,12 +316,14 @@
        ~@body)))
 
 
+
 (defmacro ^:private trace-circuit-breaker-attempt
   [opts & body]
   `(let [opts# ~opts]
      (u/trace (:track-as opts#)
        {:pairs
         [:mulog/namespace        (str (:log-ns opts#))
+         :mulog/origin           :safely.core
          :safely/attempt         (:attempt opts#)
          :safely/max-retries     (:max-retries opts#)
          :safely/call-level      :inner
@@ -578,7 +577,7 @@
         delayer (delay (apply sleeper (:retry-delay opts')))]
 
     ;; track time and outcome of the overall call.
-    (u/trace (:track-as opts') ;; TODO: what if not present?
+    (u/trace (:track-as opts')
       [:mulog/namespace        (some-> (:log-ns opts') str)
        :safely/call-level      :outer
        :safely/call-site       (:call-site opts')
