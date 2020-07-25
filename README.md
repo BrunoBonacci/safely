@@ -172,9 +172,9 @@ This is a quick ref-card of all possible configurable options:
  ;; to disable the stacktrace reporting in the logs
  :log-stacktrace false
 
- ;; and track the number of failures, latency, errors/success rate
- ;; with the given metrics name
- :track-as "myproject.errors.mymodule.myaction"
+ ;; and track the execution time and outcome with the following action name
+ ;; use `nil` to disable tracking
+ :track-as ::action-name
 
  )
 
@@ -589,9 +589,11 @@ protecting with safely with:
   or fully-qualified actions "mymodule.myaction" for avoiding
   name-conflicts.  Use `mulog/set-global-context!` to add general info
   such application name, version, environment, host etc. The tracking
-  is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
-  `:track-as` is not provided, its source code location will be used
-  instead. _All `safely` blocks are tracked by default._
+  is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).
+  If `:track-as` is not provided, its source code location will be
+  used instead. _All `safely` blocks are tracked by default._ If you
+  wish to explicitly disable the tracking for a give block use
+  `:track-as nil`.
 
 For example:
 

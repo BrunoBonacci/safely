@@ -565,7 +565,8 @@
         such application name, version, environment, host etc. The tracking
         is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
         `:track-as` is not provided, its source code location will be used
-        instead. _All `safely` blocks are tracked by default._
+        instead. _All `safely` blocks are tracked by default._ If you wish
+        to explicitly disable the tracking for a give block use `:track-as nil`.
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
@@ -821,7 +822,8 @@
         such application name, version, environment, host etc. The tracking
         is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
         `:track-as` is not provided, its source code location will be used
-        instead. _All `safely` blocks are tracked by default._
+        instead. _All `safely` blocks are tracked by default._ If you wish
+        to explicitly disable the tracking for a give block use `:track-as nil`.
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
