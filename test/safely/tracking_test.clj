@@ -230,7 +230,7 @@
     ;; the parent id matches the outer call
     (->> *result* (map :mulog/parent-trace) first)
     => (->> *result* (filter #(= (:safely/call-level %) :outer))
-         (map :mulog/root-trace) last)
+            (map :mulog/root-trace) last)
     )
 
 
@@ -427,6 +427,7 @@
   )
 
 
+
 (fact "if `:track-as` isn't defined it should default to `:call-site`,
        if `:call-site` isn't available then, no logging."
 
@@ -438,5 +439,147 @@
 
   ;; two trace events, one outer and inner
   (count *result*) => 0
+
+  )
+
+
+
+(fact "if `:tracking` is disabled no logging and not tracking id pollution."
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (u/log :check-pollution)
+        #(+ 1 1)
+        :on-error
+        :tracking :disabled
+        :default 0)))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 1
+
+  ;; trace IDs haven't been polluted
+  (->> *result*
+    first
+    ((juxt :mulog/root-trace :mulog/parent-trace)))
+  => [nil nil]
+
+  )
+
+
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;                                                                            ;;
+;;              ----==| T A G S   A N D   C A P T U R E |==----               ;;
+;;                                                                            ;;
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(fact "`:tracking-tags` are propagated to the mulog events (success)"
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (+ 1 1)
+        :on-error
+        :default 0
+        :tracking-tags [:tag1 "value1" :tag2 :val2])))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  (map #(select-keys % [:tag1 :tag2]) *result*)
+  =>
+  (just [(contains {:tag1 "value1" :tag2 :val2})
+         (contains {:tag1 "value1" :tag2 :val2})])
+
+  )
+
+
+
+(fact "`:tracking-tags` are propagated to the mulog events (error)"
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (/ 1 0)
+        :on-error
+        :default 0
+        :log-stacktrace false
+        :tracking-tags [:tag1 "value1" :tag2 :val2])))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  (map #(select-keys % [:tag1 :tag2]) *result*)
+  =>
+  (just [(contains {:tag1 "value1" :tag2 :val2})
+         (contains {:tag1 "value1" :tag2 :val2})])
+
+  )
+
+
+
+(fact "`:tracking-capture` is used to enrich the mulog events (success)"
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (+ 1 1)
+        :on-error
+        :default 0
+        :tracking-capture (fn [v] {:value v}))))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  (map #(select-keys % [:value]) *result*)
+  =>
+  (just [(contains {:value 2})
+         (contains {:value 2})])
+
+  )
+
+
+
+(fact "`:tracking-capture` is used to enrich the mulog events (error)"
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (/ 1 0)
+        :on-error
+        :default 0
+        :log-stacktrace false
+        :tracking-capture (fn [v] {:value v}))))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  (map #(select-keys % [:value]) *result*)
+  =>
+  (just [{}
+         (contains {:value 0})])
+
+  )
+
+
+
+(fact "`:tracking-capture` is used to enrich the mulog events (capture error)"
+
+  (def ^:dynamic *result*
+    (tp/with-test-publisher
+      (safely
+          (+ 1 1)
+        :on-error
+        :default 0
+        :tracking-capture (fn [v] (/ 1 0)))))
+
+  ;; two trace events, one outer and inner
+  (count *result*) => 2
+
+  (map #(select-keys % [:mulog/capture]) *result*)
+  =>
+  [{:mulog/capture :error}
+   {:mulog/capture :error}]
 
   )

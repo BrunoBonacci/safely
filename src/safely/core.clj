@@ -37,7 +37,10 @@
    :retry-delay       [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :retryable-error?  nil
    :failed?           nil
+   :tracking          :enabled
    :track-as          nil
+   :tracking-tags     nil
+   :tracking-capture  nil
 
    ;; Circuit-Breaker options
    ;;:circuit-breaker :name
@@ -94,6 +97,17 @@
     (update $ :track-as (fn [t] (or t (:call-site $))))
     ;; if :max-retries is :forever, then retry as many times as you can
     (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
+
+
+
+(defmacro μtrace
+  "utility macro for tracing"
+  [status event-name config-map & body]
+  `(if (= :disabled ~status)
+     (do ~@body)
+     (u/trace ~event-name
+       ~config-map
+       ~@body)))
 
 
 
@@ -299,20 +313,24 @@
 (defmacro ^:private trace-direct-attempt
   [opts & body]
   `(let [opts# ~opts]
-     (u/trace (:track-as opts#)
+     (μtrace (:tracking opts#) (:track-as opts#)
        {:pairs
-        [:mulog/namespace        (str (:log-ns opts#))
-         :mulog/origin           :safely.core
-         :safely/attempt         (:attempt opts#)
-         :safely/max-retries     (:max-retries opts#)
-         :safely/call-level      :inner
-         :safely/call-site       (:call-site opts#)
-         :safely/call-type       :direct]
+        (concat
+          [:mulog/namespace        (str (:log-ns opts#))
+           :mulog/origin           :safely.core
+           :safely/attempt         (:attempt opts#)
+           :safely/max-retries     (:max-retries opts#)
+           :safely/call-level      :inner
+           :safely/call-site       (:call-site opts#)
+           :safely/call-type       :direct]
+          (:tracking-tags opts#))
         :capture
-        (fn [[_# err#]]
-          (when err#
+        (fn [[r# err#]]
+          (if err#
             {:mulog/outcome :error
-             :exception err#}))}
+             :exception err#}
+            (when-let [cap# (:tracking-capture opts#)]
+              (cap# r#))))}
        ~@body)))
 
 
@@ -320,23 +338,30 @@
 (defmacro ^:private trace-circuit-breaker-attempt
   [opts & body]
   `(let [opts# ~opts]
-     (u/trace (:track-as opts#)
+     (μtrace (:tracking opts#) (:track-as opts#)
        {:pairs
-        [:mulog/namespace        (str (:log-ns opts#))
-         :mulog/origin           :safely.core
-         :safely/attempt         (:attempt opts#)
-         :safely/max-retries     (:max-retries opts#)
-         :safely/call-level      :inner
-         :safely/call-site       (:call-site opts#)
-         :safely/call-type       :circuit-breaker
-         :safely/circuit-breaker (:circuit-breaker opts#)
-         :safely/timeout         (when-not (= (:timeout opts#) Long/MAX_VALUE) (:timeout opts#))]
+        (concat
+          [:mulog/namespace        (str (:log-ns opts#))
+           :mulog/origin           :safely.core
+           :safely/attempt         (:attempt opts#)
+           :safely/max-retries     (:max-retries opts#)
+           :safely/call-level      :inner
+           :safely/call-site       (:call-site opts#)
+           :safely/call-type       :circuit-breaker
+           :safely/circuit-breaker (:circuit-breaker opts#)
+           :safely/timeout         (when-not (= (:timeout opts#) Long/MAX_VALUE) (:timeout opts#))]
+          (:tracking-tags opts#))
         :capture
-        (fn [[_# err#]]
+        (fn [[r# err#]]
           (cond
             ;; if successful
             (nil? err#)
-            {:safely/circuit-breaker-outcome :success}
+            (merge
+              {:safely/circuit-breaker-outcome :success}
+              (when-let [cap# (:tracking-capture opts#)]
+                (try (cap# r#)
+                     (catch Exception _#
+                       {:mulog/capture :error}))))
 
             ;; failed from circuit breaker
             (and (= ::circuit-breaker (:origin (ex-data err#)))
@@ -578,11 +603,15 @@
         delayer (delay (apply sleeper (:retry-delay opts')))]
 
     ;; track time and outcome of the overall call.
-    (u/trace (:track-as opts')
-      [:mulog/namespace        (some-> (:log-ns opts') str)
-       :safely/call-level      :outer
-       :safely/call-site       (:call-site opts')
-       :safely/circuit-breaker (:circuit-breaker opts')]
+    (μtrace (:tracking opts') (:track-as opts')
+      {:pairs
+       (concat
+         [:mulog/namespace        (some-> (:log-ns opts') str)
+          :safely/call-level      :outer
+          :safely/call-site       (:call-site opts')
+          :safely/circuit-breaker (:circuit-breaker opts')]
+         (:tracking-tags opts'))
+       :capture (:tracking-capture opts')}
 
       (loop [{:keys [message default max-retries attempt track-as
                      retryable-error? failed?] :as data} opts']
