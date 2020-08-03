@@ -172,13 +172,31 @@ This is a quick ref-card of all possible configurable options:
  ;; to disable the stacktrace reporting in the logs
  :log-stacktrace false
 
+ ;; whether to enable or disable tracking.
+ ;; values: `:enabled` or `:disabled` (default: `:enabled`)
+ :tracking :enabled
+
  ;; and track the execution time and outcome with the following action name
- ;; use `nil` to disable tracking
+ ;; if not provided it will attempt to record the location (line + source file)
  :track-as ::action-name
 
+ ;; a vector of key/value pairs to include in the tracking event.
+ ;; They are useful to give more context to the event,
+ ;; so that when you read the event you have more info.
+ ;; for example:
+ :tracking-tags [:batch-size 30 :user user-id]
+
+ ;; is a function which returns the restult of the evaluation
+ ;; and capture some information from the result.
+ ;; This is useful, for example if you want to capture the
+ ;; http-status of a remote call.
+ ;; it returns a map or `nil`, the returned map will be merged
+ ;; with the tracking event.
+ :tracking-capture (fn [r] {:http-status (:http-status r)})
  )
 
 ```
+
 
 ## Examples and Case studies
 
@@ -578,8 +596,13 @@ If you have (and you should) a monitoring system which track application
 metrics as well then you can track automatically how many times a
 particular section protected by safely is running into errors.
 
-To do so all you need to do is to give a name to the section you are
-protecting with safely with:
+Tracking is enabled by default, but if you wish to disable it, set:
+
+* `:tracking :disabled` *(default `:enabled`)*
+  Whether to enable or disable tracking.
+
+If you wan to track a particular section, all you need to do is to
+give a name to the section you are protecting with safely with:
 
 * `:track-as ::action-name`
   Will use the given keyword or string as name for the event. Use
@@ -592,8 +615,8 @@ protecting with safely with:
   is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).
   If `:track-as` is not provided, its source code location will be
   used instead. _All `safely` blocks are tracked by default._ If you
-  wish to explicitly disable the tracking for a give block use
-  `:track-as nil`.
+  put `:track-as nil` the tracking event won't be collected, but
+  the tracking context will be created..
 
 For example:
 
@@ -610,8 +633,29 @@ For example:
 
 This will track the call events providing a number of interesting
 information about this single block and publish them to a variety of
-monitoring systems. For more information you can see the
-[tracking](./doc/tracking.md) page.
+monitoring systems.
+
+* `:tracking-tags [:key1 :val1, :key2 :val2, ...]` *(default `[]`)*
+   A vector of key/value pairs to include in the tracking event.
+   They are useful to give more context to the event, so that
+   when you read the event you have more info.
+
+   Example:
+   `:tracking-tags [:batch-size 30 :user user-id]`
+
+* `:tracking-capture (fn [result] {:k1 :v1, :k2 :v2})` *(default `nil`)*
+   Is a function which returns the restult of the evaluation and
+   capture some information from the result.  This is useful, for
+   example if you want to capture the http-status of a remote call.  it
+   returns a map or `nil`, the returned map will be merged with the
+   tracking event.
+
+   Example:
+   `:tracking-capture (fn [r] {:http-status (:http-status r)})`
+
+
+For more information you can see the [tracking](./doc/tracking.md)
+page.
 
 With [***μ/trace***](https://github.com/BrunoBonacci/mulog#%CE%BCtrace)
 your `safely` expressions turn into traces which you can visualise

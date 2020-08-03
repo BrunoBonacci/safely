@@ -576,9 +576,10 @@
      - `:log-ns \"your.namespace\"` *(default `safely.log`)*
         To select the namespace logger. It defaults to the `safely.log`.
 
-   It is possible to track the number or and the rate of error automatically
-   in your monitoring system of choice by just adding the name under which
-   you want to track this error. By default is not enabled.
+   Tracking options:
+
+     - `:tracking :disabled` *(default `:enabled`)*
+        Whether to enable or disable tracking.
 
      - `:track-as ::action-name`
         Will use the given keyword or string as name for the event. Use
@@ -591,7 +592,27 @@
         is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
         `:track-as` is not provided, its source code location will be used
         instead. _All `safely` blocks are tracked by default._ If you wish
-        to explicitly disable the tracking for a give block use `:track-as nil`.
+        put `:track-as nil` the tracking event won't be collected, but
+        the tracking context will be created..
+
+     - `:tracking-tags [:key1 :val1, :key2 :val2, ...]` *(default `[]`)*
+        A vector of key/value pairs to include in the tracking event.
+        They are useful to give more context to the event, so that
+        when you read the event you have more info.
+
+        Example:
+        `:tracking-tags [:batch-size 30 :user user-id]`
+
+     - `:tracking-capture (fn [result] {:k1 :v1, :k2 :v2})` *(default `nil`)*
+        Is a function which returns the restult of the evaluation and
+        capture some information from the result.  This is useful, for
+        example if you want to capture the http-status of a remote call.  it
+        returns a map or `nil`, the returned map will be merged with the
+        tracking event.
+
+        Example:
+        `:tracking-capture (fn [r] {:http-status (:http-status r)})`
+
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
@@ -837,9 +858,11 @@
      - `:log-ns \"your.namespace\"` (default `*ns*`)
         To select the namespace logger. It defaults to the current ns.
 
-   It is possible to track the number or and the rate of error automatically
-   in your monitoring system of choice by just adding the name under which
-   you want to track this error. By default is not enabled.
+
+   Tracking options:
+
+     - `:tracking :disabled` *(default `:enabled`)*
+        Whether to enable or disable tracking.
 
      - `:track-as ::action-name`
         Will use the given keyword or string as name for the event. Use
@@ -852,7 +875,27 @@
         is done via [***μ/log***](https://github.com/BrunoBonacci/mulog).  If
         `:track-as` is not provided, its source code location will be used
         instead. _All `safely` blocks are tracked by default._ If you wish
-        to explicitly disable the tracking for a give block use `:track-as nil`.
+        put `:track-as nil` the tracking event won't be collected, but
+        the tracking context will be created..
+
+     - `:tracking-tags [:key1 :val1, :key2 :val2, ...]` *(default `[]`)*
+        A vector of key/value pairs to include in the tracking event.
+        They are useful to give more context to the event, so that
+        when you read the event you have more info.
+
+        Example:
+        `:tracking-tags [:batch-size 30 :user user-id]`
+
+     - `:tracking-capture (fn [result] {:k1 :v1, :k2 :v2})` *(default `nil`)*
+        Is a function which returns the restult of the evaluation and
+        capture some information from the result.  This is useful, for
+        example if you want to capture the http-status of a remote call.  it
+        returns a map or `nil`, the returned map will be merged with the
+        tracking event.
+
+        Example:
+        `:tracking-capture (fn [r] {:http-status (:http-status r)})`
+
 
   (see website for more documentation: https://github.com/BrunoBonacci/safely)
   "
