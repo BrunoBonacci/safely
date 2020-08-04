@@ -1,7 +1,7 @@
 # CHANGELOG
 
 
-## Version 0.7.0 (unreleased)
+## Version 0.7.0-alpha1 (2020-08-04)
   * [**NEW**] Migrated tracking to [***μ/log***](https://github.com/BrunoBonacci/mulog).
     [**BREAKING**] _The TrackIt! metering system is no longer supported._
     ***μ/log*** provides a much more comprehensive tracking system, and provides

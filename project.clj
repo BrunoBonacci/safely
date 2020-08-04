@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "0.7.0-SNAPSHOT"
+(defproject com.brunobonacci/safely "0.7.0-alpha1"
   :description "Safely is a Clojure's circuit-breaker library for handling retries in an elegant declarative way."
   :url "https://github.com/BrunoBonacci/safely"
 
@@ -10,8 +10,8 @@
   :dependencies [[org.clojure/clojure "1.8.0"]
                  [org.clojure/core.match "1.0.0"]
                  [defun "0.3.1"]
-                 [org.clojure/tools.logging "1.0.0"]
-                 [com.brunobonacci/mulog "0.4.0-SNAPSHOT"]
+                 [org.clojure/tools.logging "1.1.0"]
+                 [com.brunobonacci/mulog "0.4.0"]
                  [amalloy/ring-buffer "1.3.1"]]
 
   :global-vars {*warn-on-reflection* true}
@@ -19,10 +19,10 @@
   :jvm-opts ["-server"]
 
   :profiles {:dev {:resource-paths ["dev-resources"]
-                   :dependencies [[org.clojure/test.check "1.0.0"]
+                   :dependencies [[org.clojure/test.check "1.1.0"]
                                   [midje "1.9.9"]
                                   [org.slf4j/slf4j-log4j12 "1.7.30"]
-                                  [com.brunobonacci/mulog-zipkin "0.3.0"]]
+                                  [com.brunobonacci/mulog-zipkin "0.4.0"]]
                    :plugins [[lein-midje "3.2.2"]]}
 
              :clj18  {:dependencies [[org.clojure/clojure "1.8.0"]]}

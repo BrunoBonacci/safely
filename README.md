@@ -21,10 +21,10 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ``` clojure
-;; new version with μ/log tracking
-[com.brunobonacci/safely "0.7.0-SNAPSHOT"]
+;; new version with μ/log tracking (event-based)
+[com.brunobonacci/safely "0.7.0-alpha1"]
 
-;; stable version
+;; previous version TRACKit! tracking (metrics)
 [com.brunobonacci/safely "0.5.0"]
 ```
 
