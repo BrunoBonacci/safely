@@ -102,6 +102,7 @@
 
 (defmacro μtrace
   "utility macro for tracing"
+  {:no-doc true}
   [status event-name config-map & body]
   `(if (= :disabled ~status)
      (do ~@body)
