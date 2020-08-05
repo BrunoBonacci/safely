@@ -103,7 +103,7 @@ This is a quick ref-card of all possible configurable options:
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
  ;; you can provide a predicate function which determine
- ;; if the output of the body should be considered as a filed response
+ ;; if the output of the body should be considered as a failed response
  ;; this can be useful when using safely with APIs which have a return
  ;; status for errors instead of exceptions. Two good examples are HTTP
  ;; status codes and polling API, in which you wish to slow down the polling
@@ -154,7 +154,7 @@ This is a quick ref-card of all possible configurable options:
  ;; for evaluation before closing the circuit again.
  :half-open-strategy :linear-ramp-up
 
- ;; the number of millis during which time an incrising number
+ ;; the number of millis during which time an increasing number
  ;; of requests will be let through for evaluation purposes.
  :ramp-up-period    5000
 
