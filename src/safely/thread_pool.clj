@@ -16,15 +16,15 @@
   (let [counter (atom 0)
         handler (reify Thread$UncaughtExceptionHandler
                   (^void uncaughtException
-                   [_ ^Thread t, ^Throwable x]
-                   (when uncaught-exception-handler
-                     (uncaught-exception-handler t x))))]
+                    [_ ^Thread t, ^Throwable x]
+                    (when uncaught-exception-handler
+                      (uncaught-exception-handler t x))))]
     (reify ThreadFactory
       (^Thread newThread [_ ^Runnable r]
-       (let [name (format "%s[%04d]" prefix (swap! counter inc))]
-         (doto (Thread. r name)
-           (.setDaemon daemon)
-           (.setUncaughtExceptionHandler handler)))))))
+        (let [name (format "%s[%04d]" prefix (swap! counter inc))]
+          (doto (Thread. r name)
+            (.setDaemon daemon)
+            (.setUncaughtExceptionHandler handler)))))))
 
 
 
@@ -34,20 +34,20 @@
     :or   {name "safely.unnamed" core-size 5 max-size 10
            keep-alive-time 60000 queue-size 50}} ]
   (ThreadPoolExecutor.
-   ^int core-size ^int max-size ^long keep-alive-time
-   TimeUnit/MILLISECONDS
-   (ArrayBlockingQueue. ^int queue-size)
-   ^ThreadFactory (thread-factory ^String name true nil)))
+    ^int core-size ^int max-size ^long keep-alive-time
+    TimeUnit/MILLISECONDS
+    (ArrayBlockingQueue. ^int queue-size)
+    ^ThreadFactory (thread-factory ^String name true nil)))
 
 
 
 (defn fixed-thread-pool
   [name size & {:keys [queue-size] :as opts}]
   (thread-pool
-   (assoc opts
-          :name name
-          :core-size size
-          :max-size  size)))
+    (assoc opts
+      :name name
+      :core-size size
+      :max-size  size)))
 
 
 
@@ -60,13 +60,13 @@
   [^ExecutorService pool thunk]
   (try
     (.submit
-     pool
-     ^Callable
-     (fn []
-       (try
-         [(thunk) nil nil]
-         (catch Throwable x
-           [nil :error x]))))
+      pool
+      ^Callable
+      (fn []
+        (try
+          [(thunk) nil nil]
+          (catch Throwable x
+            [nil :error x]))))
     (catch RejectedExecutionException x
       (deliver (promise) [nil :queue-full nil]))))
 
@@ -99,7 +99,7 @@
   [value timeout cancel-strategy]
   (let [[_ e _ :as v] (deref value timeout [nil :timeout nil])]
     (when (and (= e :timeout)
-           (or (= :if-not-running cancel-strategy)
+            (or (= :if-not-running cancel-strategy)
               (= :always cancel-strategy)))
       (cancel value :force (= :always cancel-strategy)))
     v))

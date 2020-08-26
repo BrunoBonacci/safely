@@ -46,11 +46,11 @@
   (if (= fail :circuit-open)
     state
     (update state
-            :samples
-            (fnil conj (ring-buffer sample-size))
-            {:timestamp timestamp
-             :failure   fail
-             :error     error})))
+      :samples
+      (fnil conj (ring-buffer sample-size))
+      {:timestamp timestamp
+       :failure   fail
+       :error     error})))
 
 
 
@@ -59,36 +59,36 @@
    the counter for the given request outcome."
   [{{:keys [counters-buckets]} :config :as state} timestamp [ok fail]]
   (update state
-          :counters
-          (fn [counters]
-            (let [ts     (quot timestamp 1000)
-                  min-ts (- ts counters-buckets)]
-              (as-> (or counters (sorted-map)) $
-                (update $ ts
-                        (fn [{:keys
-                             [success error timeout rejected open] :as p-counters}]
-                          (let [p-counters (or p-counters
-                                              {:success  0, :error  0, :timeout  0,
-                                               :rejected 0, :open   0})]
-                            (case fail
+    :counters
+    (fn [counters]
+      (let [ts     (quot timestamp 1000)
+            min-ts (- ts counters-buckets)]
+        (as-> (or counters (sorted-map)) $
+          (update $ ts
+            (fn [{:keys
+                  [success error timeout rejected open] :as p-counters}]
+              (let [p-counters (or p-counters
+                                 {:success  0, :error  0, :timeout  0,
+                                  :rejected 0, :open   0})]
+                (case fail
 
-                              nil
-                              (update p-counters :success inc)
+                  nil
+                  (update p-counters :success inc)
 
-                              :error
-                              (update p-counters :error inc)
+                  :error
+                  (update p-counters :error inc)
 
-                              :timeout
-                              (update p-counters :timeout inc)
+                  :timeout
+                  (update p-counters :timeout inc)
 
-                              :queue-full
-                              (update p-counters :rejected inc)
+                  :queue-full
+                  (update p-counters :rejected inc)
 
-                              :circuit-open
-                              (update p-counters :open inc)))))
+                  :circuit-open
+                  (update p-counters :open inc)))))
 
                 ;; keep only last `counters-buckets` entries
-                (apply dissoc $ (filter #(< % min-ts) (map first $))))))))
+          (apply dissoc $ (filter #(< % min-ts) (map first $))))))))
 
 
 
@@ -96,8 +96,8 @@
   [state result]
   (let [ts (now)]
     (-> state
-        (update-samples  ts result)
-        (update-counters ts result))))
+      (update-samples  ts result)
+      (update-counters ts result))))
 
 
 
@@ -127,9 +127,9 @@
   [counters last-n-seconds]
   (->> counters
        ;; take only last 10 seconds
-       (filter #(> (first %) (- (now :seconds) last-n-seconds)))
-       (map second)
-       (reduce sum-counters)))
+    (filter #(> (first %) (- (now :seconds) last-n-seconds)))
+    (map second)
+    (reduce sum-counters)))
 
 
 
@@ -168,7 +168,7 @@
 
 (defmulti allow-this-request?
   (fn [{:keys [status]
-       {:keys [half-open-strategy]} :config}]
+        {:keys [half-open-strategy]} :config}]
     (if (= status :half-open)
       [status half-open-strategy]
       [status])))
@@ -207,17 +207,17 @@
   ;; cb state (example)
   {:cb-name1
    (atom
-    {:status :closed
-     :last-status-change 1509199400
+     {:status :closed
+      :last-status-change 1509199400
 
      ;; injected values
-     :in-flight 3
+      :in-flight 3
 
-     :counters {1509199799 {:success 1, :error 0, :timeout 1, :rejected 0, :open 0}},
-     :samples [{:timestamp 1509199799102, :failure nil :error nil}
-               {:timestamp 1509199799348, :failure :timeout :error nil}]
-     :config {} ;; safely config
-     })}
+      :counters {1509199799 {:success 1, :error 0, :timeout 1, :rejected 0, :open 0}},
+      :samples [{:timestamp 1509199799102, :failure nil :error nil}
+                {:timestamp 1509199799348, :failure :timeout :error nil}]
+      :config {} ;; safely config
+      })}
   )
 
 
@@ -225,11 +225,11 @@
 (defn- circuit-breaker-state-init
   [{:keys [sample-size] :as options}]
   (atom
-   {:status             :closed
-    :last-status-change (now)
-    :samples            (ring-buffer sample-size)
-    :counters           {}
-    :config             options}))
+    {:status             :closed
+     :last-status-change (now)
+     :samples            (ring-buffer sample-size)
+     :counters           {}
+     :config             options}))
 
 
 
@@ -241,17 +241,17 @@
   (if-let [p (get @cb-pools-atom (keyword circuit-breaker))]
     p
     (-> cb-pools-atom
-        (swap!
-         update (keyword circuit-breaker)
-         (fn [thread-pool]
+      (swap!
+        update (keyword circuit-breaker)
+        (fn [thread-pool]
            ;; might be already set by another
            ;; concurrent thread.
-           (or thread-pool
+          (or thread-pool
               ;; if it doesn't exists then create one and initialize it.
-              (fixed-thread-pool
-               (str "safely.cb." (name circuit-breaker))
-               thread-pool-size :queue-size queue-size))))
-        (get (keyword circuit-breaker)))))
+            (fixed-thread-pool
+              (str "safely.cb." (name circuit-breaker))
+              thread-pool-size :queue-size queue-size))))
+      (get (keyword circuit-breaker)))))
 
 
 
@@ -264,15 +264,15 @@
     (if-let [s (get @cb-state-atom circuit-breaker)]
       s
       (-> cb-state-atom
-          (swap!
-           update circuit-breaker
-           (fn [state]
+        (swap!
+          update circuit-breaker
+          (fn [state]
              ;; might be already set by another
              ;; concurrent thread.
-             (or state
+            (or state
                 ;; if it doesn't exists then create one and initialize it.
-                (circuit-breaker-state-init options))))
-          (get circuit-breaker)))))
+              (circuit-breaker-state-init options))))
+        (get circuit-breaker)))))
 
 
 
@@ -281,14 +281,14 @@
    If you provide a `pool-name` it will shutdown only the specified one."
   ([cb-pools-atom]
    (->> @cb-pools-atom
-        (run! (fn [[k# ^ThreadPoolExecutor tp#]]
-                (log/info "shutting down pool:" k#)
-                (.shutdownNow tp#)))))
+     (run! (fn [[k# ^ThreadPoolExecutor tp#]]
+             (log/info "shutting down pool:" k#)
+             (.shutdownNow tp#)))))
   ([cb-pools-atom pool-name]
    (some-> (get @cb-pools-atom pool-name)
-           ((fn [[k# ^ThreadPoolExecutor tp#]]
-              (log/info "shutting down pool:" k#)
-              (.shutdownNow tp#))))))
+     ((fn [[k# ^ThreadPoolExecutor tp#]]
+        (log/info "shutting down pool:" k#)
+        (.shutdownNow tp#))))))
 
 
 
@@ -298,17 +298,17 @@
     the status, some counters, and sampled responses."
   ([cb-state-atom cb-pool-atom]
    (->> (merge-with vector @cb-state-atom @cb-pool-atom)
-        (map (fn [[k [v1 v2]]]
+     (map (fn [[k [v1 v2]]]
                ;; inject the in-flight requests
-               [k (assoc @v1 :in-flight
-                         (running-task-count v2))]))
-        (into {})))
+            [k (assoc @v1 :in-flight
+                 (running-task-count v2))]))
+     (into {})))
   ([cb-state-atom cb-pool-atom cb-name]
    (let [^ThreadPoolExecutor tp (get @cb-pool-atom cb-name)]
      (some-> @cb-state-atom
-             (get cb-name)
-             deref
-             (assoc :in-flight (running-task-count tp))))))
+       (get cb-name)
+       deref
+       (assoc :in-flight (running-task-count tp))))))
 
 
 ;;
@@ -379,9 +379,9 @@
     (if closed?
       state
       (assoc state
-             :status   :open ;; change state
-             :counters {}    ;; reset counters
-             ))))
+        :status   :open ;; change state
+        :counters {}    ;; reset counters
+        ))))
 
 
 
@@ -446,9 +446,9 @@
           ;; retrieve or create thread-pool
           (-> (pool options)
               ;; executed in thread-pool and get a promise of result
-              (async-execute-with-pool f)
+            (async-execute-with-pool f)
               ;; wait result or timeout to expire
-              (timeout-wait timeout cancel-on-timeout))
+            (timeout-wait timeout cancel-on-timeout))
 
           ;; ELSE
           [nil :circuit-open nil])]

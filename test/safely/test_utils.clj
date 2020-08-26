@@ -117,10 +117,10 @@
          semaphore# (promise)
          results# (->> (range ~n)
                     (map
-                        (fn [_#]
-                          (run-thread
-                            @semaphore#
-                            ~@body)))
+                      (fn [_#]
+                        (run-thread
+                          @semaphore#
+                          ~@body)))
                     (doall))]
      (deliver semaphore# :ok)
      (map (comp simplify-errors# deref) results#)))

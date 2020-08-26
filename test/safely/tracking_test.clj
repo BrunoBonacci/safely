@@ -29,7 +29,7 @@
     (def ^:dynamic *result*
       (tp/with-test-publisher
         (safely
-            (+ 1 1)
+          (+ 1 1)
           :on-error
           :track-as :test
           :default 0)))
@@ -81,7 +81,7 @@
         (tp/ignore
           (sleepless
             (safely
-                (/ 1 0)
+              (/ 1 0)
               :on-error
               :track-as :test
               :log-stacktrace false
@@ -130,7 +130,7 @@
                          #(boom)
                          (constantly :success))]
               (safely
-                  (expr)
+                (expr)
                 :on-error
                 :track-as :test
                 :log-stacktrace false
@@ -183,7 +183,7 @@
     (def ^:dynamic *result*
       (tp/with-test-publisher
         (safely
-            (+ 1 1)
+          (+ 1 1)
           :on-error
           :track-as :test
           :circuit-breaker :cb-test
@@ -230,7 +230,7 @@
     ;; the parent id matches the outer call
     (->> *result* (map :mulog/parent-trace) first)
     => (->> *result* (filter #(= (:safely/call-level %) :outer))
-            (map :mulog/root-trace) last)
+         (map :mulog/root-trace) last)
     )
 
 
@@ -241,7 +241,7 @@
         (tp/ignore
           (sleepless
             (safely
-                (/ 1 0)
+              (/ 1 0)
               :on-error
               :track-as :test
               :circuit-breaker :cb-test2
@@ -291,7 +291,7 @@
                          #(boom)
                          (constantly :success))]
               (safely
-                  (expr)
+                (expr)
                 :on-error
                 :track-as :test
                 :circuit-breaker :cb-test3
@@ -341,7 +341,7 @@
     (dotimes [i 2]
       (future
         (safely
-            (Thread/sleep 5000)
+          (Thread/sleep 5000)
           :on-error
           :log-stacktrace false
           :track-as :load-user
@@ -355,7 +355,7 @@
         (dotimes [i 5]
           (sleepless
             (safely
-                :success
+              :success
               :on-error
               :track-as :test
               :circuit-breaker :cd-test4
@@ -393,7 +393,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (+ 1 1)
+        (+ 1 1)
         :on-error
         :default 0)))
 
@@ -449,7 +449,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (u/log :check-pollution)
+        (u/log :check-pollution)
         #(+ 1 1)
         :on-error
         :tracking :disabled
@@ -479,7 +479,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (+ 1 1)
+        (+ 1 1)
         :on-error
         :default 0
         :tracking-tags [:tag1 "value1" :tag2 :val2])))
@@ -501,7 +501,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (/ 1 0)
+        (/ 1 0)
         :on-error
         :default 0
         :log-stacktrace false
@@ -524,7 +524,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (+ 1 1)
+        (+ 1 1)
         :on-error
         :default 0
         :tracking-capture (fn [v] {:value v}))))
@@ -546,7 +546,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (/ 1 0)
+        (/ 1 0)
         :on-error
         :default 0
         :log-stacktrace false
@@ -569,7 +569,7 @@
   (def ^:dynamic *result*
     (tp/with-test-publisher
       (safely
-          (+ 1 1)
+        (+ 1 1)
         :on-error
         :default 0
         :tracking-capture (fn [v] (/ 1 0)))))

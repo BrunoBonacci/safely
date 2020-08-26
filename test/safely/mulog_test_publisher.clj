@@ -11,7 +11,7 @@
 
 
 (deftype TestPublisher
-    [buffer delivery-buffer process]
+         [buffer delivery-buffer process]
 
   com.brunobonacci.mulog.publisher.PPublisher
   (agent-buffer [_] buffer)
