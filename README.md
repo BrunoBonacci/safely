@@ -8,7 +8,7 @@ The library offers out of the box:
 
   * declarative exception handling
   * declarative *circuit breaker* (in pure Clojure)
-  * automatic policy-based retry
+  * automatic policy-based retries (declarative)
   * randomized delays retries
   * attenuation of self-emergent behaviour in distributed systems
   * sleepless-mode for testing
