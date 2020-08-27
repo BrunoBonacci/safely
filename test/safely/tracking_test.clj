@@ -120,7 +120,7 @@
 
 
 
-  (fact "failure and retries and success"
+  (fact "error and retries and success"
     (def ^:dynamic *result*
       (tp/with-test-publisher
         (tp/ignore
