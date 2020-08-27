@@ -8,13 +8,13 @@ The library offers out of the box:
 
   * declarative exception handling
   * declarative *circuit breaker* (in pure Clojure)
-  * automatic retry policies
+  * automatic policy-based retry
   * randomized delays retries
-  * attenuation of self-emergent behaviour is distributed systems
+  * attenuation of self-emergent behaviour in distributed systems
   * sleepless-mode for testing
   * automatic and customizable logging of errors
   * automatic tracking of errors rate/count in monitoring tools
-  * automatic tracking of common performance metrics
+  * automatic tracing compatible with OpenZipkin distributed tracing
 
 ## Usage
 
