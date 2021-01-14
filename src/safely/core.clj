@@ -100,7 +100,7 @@
 
 
 
-(defmacro μtrace
+(defmacro mutrace
   "utility macro for tracing"
   {:no-doc true}
   [status event-name config-map & body]
@@ -314,7 +314,7 @@
 (defmacro ^:private trace-direct-attempt
   [opts & body]
   `(let [opts# ~opts]
-     (μtrace (:tracking opts#) (:track-as opts#)
+     (mutrace (:tracking opts#) (:track-as opts#)
        {:pairs
         (concat
           [:mulog/namespace        (str (:log-ns opts#))
@@ -339,7 +339,7 @@
 (defmacro ^:private trace-circuit-breaker-attempt
   [opts & body]
   `(let [opts# ~opts]
-     (μtrace (:tracking opts#) (:track-as opts#)
+     (mutrace (:tracking opts#) (:track-as opts#)
        {:pairs
         (concat
           [:mulog/namespace        (str (:log-ns opts#))
@@ -625,7 +625,7 @@
         delayer (delay (apply sleeper (:retry-delay opts')))]
 
     ;; track time and outcome of the overall call.
-    (μtrace (:tracking opts') (:track-as opts')
+    (mutrace (:tracking opts') (:track-as opts')
       {:pairs
        (concat
          [:mulog/namespace        (some-> (:log-ns opts') str)

@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## Version 0.7.0-alpha2 (2021-01-14)
+## Version 0.7.0-alpha3 (2021-01-14)
   * Small fix remove μ char to avoid loading issues.
 
 
