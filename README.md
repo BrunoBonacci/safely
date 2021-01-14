@@ -22,7 +22,7 @@ Add the dependency into your `project.clj`.
 
 ``` clojure
 ;; new version with μ/log tracking (event-based)
-[com.brunobonacci/safely "0.7.0-alpha1"]
+[com.brunobonacci/safely "0.7.0-alpha2"]
 
 ;; previous version TRACKit! tracking (metrics)
 [com.brunobonacci/safely "0.5.0"]

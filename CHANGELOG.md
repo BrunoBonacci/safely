@@ -1,5 +1,8 @@
 # CHANGELOG
 
+## Version 0.7.0-alpha2 (2021-01-14)
+  * Small fix remove μ char to avoid loading issues.
+
 
 ## Version 0.7.0-alpha1 (2020-08-04)
   * [**NEW**] Migrated tracking to [***μ/log***](https://github.com/BrunoBonacci/mulog).
