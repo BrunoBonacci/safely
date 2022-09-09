@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "0.7.0-alpha3"
+(defproject com.brunobonacci/safely "0.7.0-SNAPSHOT"
   :description "Safely is a Clojure's circuit-breaker library for handling retries in an elegant declarative way."
   :url "https://github.com/BrunoBonacci/safely"
 
@@ -28,8 +28,10 @@
              :clj18  {:dependencies [[org.clojure/clojure "1.8.0"]]}
              :clj19  {:dependencies [[org.clojure/clojure "1.9.0"]]}
              :clj110 {:dependencies [[org.clojure/clojure "1.10.1"]]}
+             :clj111 {:dependencies [[org.clojure/clojure "1.11.1"]]}
              }
 
   :aliases {"test" ["do" "clean," "midje"]
-            "build-all"  ["with-profile" "+clj18:+clj19:+clj110" "do" "clean," "check," "midje," "jar"]}
+            "build-all"  ["with-profile" "+clj18:+clj19:+clj110:+clj111"
+                          "do" "clean," "check," "midje," "jar"]}
   )
