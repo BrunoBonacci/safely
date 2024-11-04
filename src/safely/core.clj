@@ -42,6 +42,18 @@
    :tracking-tags     nil
    :tracking-capture  nil
 
+   ;; Whether to rethrow the original exceltion or the wrapped one
+   ;; one of: :legacy | :original | :wrapped | λ -> e -> e
+   ;; - :legacy -> keeps the behaviour of v0.7.0-alph3 or earlier version
+   ;; - :original -> throws the exception raised in the inner block of safely
+   ;; - :wrapped  -> throws the safely exception containing the data
+   ;; - λ -> e -> e
+   ;;   alternatively you can pass a function which takes an exception
+   ;;   and returns another exception presumably transformed. this is
+   ;;   useful to stardardize the exception in the outer layers.
+   :rethrow           :legacy
+
+
    ;; Circuit-Breaker options
    ;;:circuit-breaker :name
    :thread-pool-size  10
@@ -181,7 +193,7 @@
   ([n]
    (when-not *sleepless-mode*
      (try
-       (Thread/sleep n)
+       (Thread/sleep ^long n)
        (catch Exception x#))))
 
   ([:min a :max b]
@@ -388,6 +400,20 @@
 
 
 
+(defn- -rethrow!
+  [default {:keys [rethrow message] :as opts} ^java.lang.Throwable exception]
+  (cond
+    (or (= rethrow :original)
+      (and (= rethrow :legacy) (= default :original)))
+    (throw exception)
+
+    (or (= rethrow :wrapped) (and (= rethrow :legacy) (= default :wrapped)))
+    (throw (ex-info message opts exception))
+
+    (fn? rethrow)
+    (throw (rethrow exception))))
+
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;
 ;;                   ----==| C O R E   S A F E L Y |==----                    ;;
@@ -456,6 +482,22 @@
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
+
+     - `:rethrow` with one of `:original`, `:wrapped`, `:legacy`, `(fn [exception] true)`
+        It can be one of the following values: `:original`, `:wrapped`, `:legacy`
+        or `(fn [exception] true)` a function which takes a java.lang.Throwable
+        and returns a java.lang.Throwable.
+        Use `:rethrow :original` to rethrow the exception that was generated inside
+        the safely block to the caller. Please note that if you are using
+        a circuit-breaker, the exception received will depend on the current state
+        of the circuit and it could be an ex-info exception with `:cause :circuit-open`.
+        Use `:rethrow :wrapped` to rethrow and ex-info exception with the current
+        values of the safely internal data and the original exception as the cause.
+        Use `:rethrow :legacy` (default) to maintain the behaviour of version 0.7.0
+        or earlier versions, which unfortunately was a mix of the two.
+        Use `:return (fn [exception] (ex-info \"my custom exception\" {} exception))`
+        to return a new (or the same exception). This option provides the opportunity
+        to conform the exception thrown to the caller.
 
      - `:failed? (fn [result] false)`
         You can provide a predicate function to determine whether the result
@@ -618,7 +660,7 @@
   "
 
   [f & {:as opts}]
-  (let [;; applying defaults
+  (let [ ;; applying defaults
         opts'   (apply-defaults opts defaults)
         ;; lazy execution as only needed in case of error
         delayer (delay (apply sleeper (:retry-delay opts')))]
@@ -635,7 +677,7 @@
        :capture (:tracking-capture opts')}
 
       (loop [{:keys [message default max-retries attempt track-as
-                     retryable-error? failed?] :as data} opts']
+                     retryable-error? failed? rethrow] :as data} opts']
         (let [[result ex] (make-attempt data f)]
           ;; check execution outcome,
           ;; if it is not an error or a failed result, then..
@@ -649,7 +691,7 @@
               ;; check whether is a retryable error only when the function is provided
               ;; and there is an actual error
               (and retryable-error? ex (not (retryable-error? ex)))
-              (throw ex)
+              (-rethrow! :original opts' ex)
 
               ;; we reached the max retry but we have a default
               (and (not= ::undefined default) (>= attempt max-retries))
@@ -657,7 +699,7 @@
 
               ;; we got error and reached the max retry
               (and (= ::undefined default) (>= attempt max-retries))
-              (throw (ex-info message data ex))
+              (-rethrow! :wrapped opts' ex)
 
               ;; retry
               :else
@@ -738,6 +780,22 @@
         For example if you wish not to retry ArithmeticException
         you could use something like:
         `:retryable-error? #(not (#{ArithmeticException} (type %)))`
+
+     - `:rethrow` with one of `:original`, `:wrapped`, `:legacy`, `(fn [exception] true)`
+        It can be one of the following values: `:original`, `:wrapped`, `:legacy`
+        or `(fn [exception] true)` a function which takes a java.lang.Throwable
+        and returns a java.lang.Throwable.
+        Use `:rethrow :original` to rethrow the exception that was generated inside
+        the safely block to the caller. Please note that if you are using
+        a circuit-breaker, the exception received will depend on the current state
+        of the circuit and it could be an ex-info exception with `:cause :circuit-open`.
+        Use `:rethrow :wrapped` to rethrow and ex-info exception with the current
+        values of the safely internal data and the original exception as the cause.
+        Use `:rethrow :legacy` (default) to maintain the behaviour of version 0.7.0
+        or earlier versions, which unfortunately was a mix of the two.
+        Use `:return (fn [exception] (ex-info \"my custom exception\" {} exception))`
+        to return a new (or the same exception). This option provides the opportunity
+        to conform the exception thrown to the caller.
 
      - `:failed? (fn [result] false)`
         You can provide a predicate function to determine whether the result

@@ -255,6 +255,155 @@
   )
 
 
+(fact
+  "using `:rethrow` with :legacy should maintain the default (implicit case)"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5
+      :retryable-error? #(not (#{ArithmeticException} (type %)))))
+  => (throws ArithmeticException)
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5))
+  => (throws clojure.lang.ExceptionInfo)
+
+  )
+
+
+(fact
+  "using `:rethrow` with :legacy should maintain the default (excplicit case)"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5
+      :rethrow :legacy
+      :retryable-error? #(not (#{ArithmeticException} (type %)))))
+  => (throws ArithmeticException)
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :rethrow :legacy
+      :log-stacktrace false
+      :max-retries 5))
+  => (throws clojure.lang.ExceptionInfo)
+
+  )
+
+
+(fact
+  "using `:rethrow` with :original should always throw the original exception"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5
+      :rethrow :original
+      :retryable-error? #(not (#{ArithmeticException} (type %)))))
+  => (throws ArithmeticException)
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :rethrow :original
+      :log-stacktrace false
+      :max-retries 5))
+  => (throws ArithmeticException)
+
+  )
+
+
+(fact
+  "using `:rethrow` with :wrapped should always throw the original exception"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5
+      :rethrow :wrapped
+      :retryable-error? #(not (#{ArithmeticException} (type %)))))
+  => (throws clojure.lang.ExceptionInfo)
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :rethrow :wrapped
+      :log-stacktrace false
+      :max-retries 5))
+  => (throws clojure.lang.ExceptionInfo)
+
+  )
+
+
+(fact
+  "using `:rethrow` with a fn should always throw the result of the function"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 5
+      :rethrow (fn [e] (RuntimeException. "custom" e))
+      :retryable-error? #(not (#{ArithmeticException} (type %)))))
+  => (throws RuntimeException)
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :rethrow (fn [e] (RuntimeException. "custom" e))
+      :log-stacktrace false
+      :max-retries 5))
+  => (throws RuntimeException)
+
+  )
+
+
+(fact
+  "using `:rethrow` with :original should always throw the original exception while using a circuit breaker"
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 0
+      :rethrow :original
+      :retryable-error? #(not (#{ArithmeticException} (type %)))
+      :circuit-breaker (keyword (str "test-" (rand-int 1000)))))
+  => (throws ArithmeticException)
+
+
+  (sleepless
+    (safely
+      (/ 1 0)
+      :on-error
+      :log-stacktrace false
+      :max-retries 0  ;; if max retries trips circuit-breaker, then exception will be :circuit-breaker :open
+      :rethrow :original
+      :circuit-breaker (keyword (str "test-" (rand-int 1000)))))
+  => (throws ArithmeticException)
+
+  )
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;                                                                            ;;

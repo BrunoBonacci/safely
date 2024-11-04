@@ -102,6 +102,14 @@ This is a quick ref-card of all possible configurable options:
  ;; truthy or falsey.
  :retryable-error? #(not (#{ArithmeticException NullPointerException} (type %)))
 
+ ;; valid values: :original, :wrapped, :legacy, (fn [exception] true)
+ ;; If an exception is thrown it determine its value.
+ ;; :wrapped refers to the ex-info exception throw by safely
+ ;; :original refers ti the exception raised inside the block
+ ;; :legacy is to maintain the behaviour of earlier versions (mix of the two)
+ ;; You can provide a function to control the type of the exception thrown.
+ :rethrow :legacy
+
  ;; you can provide a predicate function which determine
  ;; if the output of the body should be considered as a failed response
  ;; this can be useful when using safely with APIs which have a return
