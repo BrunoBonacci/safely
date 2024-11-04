@@ -404,9 +404,9 @@ effectively anything between 1500 millis (3000 - 50%) and 4500 millis
 #### :random-exp-backoff
 
 In this example `safely` will retry for a maximum of 3 times with a
-exponential backoff delay of 3 seconds (3000 milliseconds) and plus or
-minus random 50% of the base amount. This means that the first retry
-will be ~3 sec (+/- random variation), the second retry will ~9 sec
+exponential backoff delay of 300 milliseconds and plus or
+minus random 50% of the calculated wait time. This means that the first retry
+will be ~300 millis (+/- random variation), the second retry will ~600 millis
 (+/- random variation) etc.
 
 ```Clojure
@@ -477,13 +477,13 @@ which you want to wait for a similar amount of time.
 (safely
   (http/get "http://user.service.local/users?active=true")
   :on-error
-  :max-retries 3
+  :max-retries 10
   :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50 :max 240000])
 ```
 
-The above example set a maximum delay of **4 minutes** (240000 millis)
+The above example sets a maximum delay of **4 minutes** (240000 millis)
 beyond which time `safely` won't backoff exponentially any more, but
-it will remain constant.
+it will remain constant (with some random variation).
 
 Example for the effect of `:max 240000`
 
