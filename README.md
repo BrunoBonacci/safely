@@ -418,15 +418,16 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
   :retry-delay [:random-exp-backoff :base  300 :+/- 0.50])
 ```
 
-**The Math gotchas:** The exponential backoff typically follows this
-formula:
+**The exponential backoff** typically follows this formula:
 
-    delay = base-delay * 2 ^ retry +/- random-variation
+    delay = base-delay * 2 ^ retry [+/- random-variation]
+
+NOTE: The random variation is added in a second step.
 
 for a exponential back off for 3000 millis (3 sec) would be:
 
-    retry:     0      1       2       3       4 ...
-    formula: 3*2^0   3*2^1   3*2^2   3*2^3   3*2^4
+    retry:     0       1       2       3       4 ...
+    formula:  3*2^0   3*2^1   3*2^2   3*2^3   3*2^4
     delay:     3s     6s      12s     24s     48s
 
 
@@ -454,6 +455,17 @@ REPL as follow:
 
 **The randomization is applied after the exponential value has been
   calculated**
+
+If you want to simulate the random variation as well write as follow:
+
+```Clojure
+(require 'safely.core)
+(->> (#'safely.core/exponential-seq 2000)
+  (map #(safely.core/random % :+/- 0.50))
+  (take 10))
+;; => (2488 2152 6072 11159 46051 60235 65198 231233 573339 518515)
+```
+NOTE: Every execution will return different numbers.
 
 #### :random-exp-backoff (with :max)
 
