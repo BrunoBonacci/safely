@@ -21,16 +21,13 @@ The library offers out of the box:
 Add the dependency into your `project.clj`.
 
 ``` clojure
-;; new version with μ/log tracking (event-based)
+;; stable version
 [com.brunobonacci/safely "0.7.0-alpha3"]
-
-;; previous version TRACKit! tracking (metrics)
-[com.brunobonacci/safely "0.5.0"]
 ```
 
   * Latest version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
   * Online [Documentation latest version](https://cljdoc.org/d/com.brunobonacci/safely/CURRENT).
-  * Online [Documentation v0.5.0](https://cljdoc.org/d/com.brunobonacci/safely/0.5.0)
+
 
 
 Require the namespace:
