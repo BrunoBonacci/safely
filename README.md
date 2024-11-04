@@ -90,8 +90,8 @@ This is a quick ref-card of all possible configurable options:
  :retry-delay [:random 3000 :+/- 0.35]
 
  ;; or wait an exponential amount of time with a random variation
- :retry-delay [:random-exp-backoff :base 3000 :+/- 0.50]
- :retry-delay [:random-exp-backoff :base 3000 :+/- 0.35 :max 25000]
+ :retry-delay [:random-exp-backoff :base 300 :+/- 0.50]
+ :retry-delay [:random-exp-backoff :base 300 :+/- 0.35 :max 25000]
 
  ;; or wait a given list of times with a random variation
  :retry-delay [:rand-cycle [50 100 250 700 1250 2500] :+/- 0.50]
@@ -415,35 +415,20 @@ will be ~3 sec (+/- random variation), the second retry will ~9 sec
   (http/get "http://user.service.local/users?active=true")
   :on-error
   :max-retries 3
-  :retry-delay [:random-exp-backoff :base  3000 :+/- 0.50])
+  :retry-delay [:random-exp-backoff :base  300 :+/- 0.50])
 ```
 
 **The Math gotchas:** The exponential backoff typically follows this
 formula:
 
-    delay = base-delay ^ retry-number +/- random-variation
+    delay = base-delay * 2 ^ retry +/- random-variation
 
-for a typical exponential back off for 3 sec would be:
+for a exponential back off for 3000 millis (3 sec) would be:
 
-    retry:     1     2     3     4 ...
-    formula:  3^1   3^2   3^3   3^4
-    delay:     3     9    27     81 sec
+    retry:     0      1       2       3       4 ...
+    formula: 3*2^0   3*2^1   3*2^2   3*2^3   3*2^4
+    delay:     3s     6s      12s     24s     48s
 
-however the base amount is specified in milliseconds (not in seconds)
-which mathematically would be (this is not how `safely` implements the
-backoff):
-
-    retry:     1         2          3         4 ...
-    formula: 3000^1   3000^2      3^3       3^4
-    delay:   3000     9000000    27+E9     81+E12
-              3s     2.5 hours  +20 years
-             THIS IS NOT HOW SAFELY OPERATES
-
-Which means the second retry will be after *2.5 hours* and the third
-retry will be after *20 years*. I'm sure that none of your apps
-wants to wait 20 years before retrying, therefore `safely` despite
-requiring the time in milliseconds will try to adapt the exponential
-backoff base to scale of the number.
 
 So for example for a given base you have the number of
 milliseconds of each subsequent retry:
@@ -451,20 +436,11 @@ milliseconds of each subsequent retry:
 
 | Base | Retry 1 | Retry 2 | Retry 3 | Retry 4 | Retry 5 |
 |-----:|--------:|--------:|--------:|--------:|--------:|
-|   50 |      50 |     250 |    1250 |    6250 |   31250 |
+|   50 |      50 |     100 |     200 |     400 |     800 |
+|  100 |     100 |     200 |     400 |     800 |    1600 |
 |  200 |     200 |     400 |     800 |    1600 |    3200 |
 | 2000 |    2000 |    4000 |    8000 |   16000 |   32000 |
-| 3000 |    3000 |    9000 |   27000 |   81000 |  243000 |
-
-
-The algorithm takes base and it compute the size of base (log10 base)
-and it strips down the least relevant digits before the power is
-applied.  This ensures that the exponential back off maintains
-practical timing while still increasing the delay of every retry.
-
-The following formula explains better how it works :
-
-![formula](/doc/images/retry-formula.png)
+| 3000 |    3000 |    6000 |   12000 |   24000 |   48000 |
 
 
 If you wish to check the sequence for a given base you can try on the
@@ -503,11 +479,11 @@ Example for the effect of `:max 240000`
 (require 'safely.core)
 ;; without :max
 (take 10 (#'safely.core/exponential-seq 3000))
-;;=> (3000 9000 27000 81000 243000 729000 2187000 6561000 19683000 59049000)
+;; => (3000 6000 12000 24000 48000 96000 192000 384000 768000 1536000)
 
 ;; with :max 240000
 (take 10 (#'safely.core/exponential-seq 3000 240000))
-;;=> (3000 9000 27000 81000 240000 240000 240000 240000 240000 240000)
+;; => (3000 6000 12000 24000 48000 96000 192000 240000 240000 240000)
 ```
 
 #### :rand-cycle
@@ -952,6 +928,6 @@ returns immediately (same code path, but no sleep).
 
 ## License
 
-Copyright © 2015-2020 Bruno Bonacci
+Copyright © 2015-2024 Bruno Bonacci
 
 Distributed under the Apache License v 2.0 (http://www.apache.org/licenses/LICENSE-2.0)

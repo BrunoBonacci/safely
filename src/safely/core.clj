@@ -136,27 +136,26 @@
                           (random :min (- base variance) :max (+ base variance)))))
 
 
+(defn- pow*
+  "integer power function"
+  [b p]
+  (apply *' (repeat p b)))
+
+
 
 (defn- exponential-seq
   "Produces a sequence of exponentially bigger wait times.
-   The exponential base is taken from the most significant
-   digit of `base` and not the entire number.
+   following the formula: factor * 2 ^ retry
    For more info see: https://github.com/BrunoBonacci/safely
   "
-  ([base max-value]
-   (map #(min % max-value) (exponential-seq base)))
-  ([^long base]
-   (let [base   (Math/abs base)
-         log10  (fn [n] (/ (Math/log n) (Math/log 10)))
-         pow    (fn [b p] (apply *' (repeat p b)))
-         size   (int (log10 base))
-         factor (pow 10 size)]
-     (map :value
-       (iterate (fn [{:keys [base size factor step] :as d}]
-                  (let [value (quot (*' factor (pow (/ base factor) (inc step))) 1)]
-                    (-> (assoc d :value value)
-                      (update :step inc))))
-         {:size size :factor factor :base base :step 1 :value base})))))
+  ([factor]
+   (exponential-seq factor 2 0))
+  ([factor max-value]
+   (map #(min % max-value) (exponential-seq factor 2 0)))
+  ([^long factor ^long base ^long exp]
+   (cons
+     (*' factor (pow* base exp))
+     (lazy-seq (exponential-seq factor base (inc exp))))))
 
 
 

@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## Version 0.7.0-SNAPSHOT (unreleased)
+  * update dependencies
+  * Add Clojure 1.12 as compilation target
+  * [FIX #9] Use more intuitive exponential backoff
+
+
 ## Version 0.7.0-alpha3 (2021-01-14)
   * Small fix remove μ char to avoid loading issues.
 
