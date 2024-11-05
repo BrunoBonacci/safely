@@ -496,7 +496,7 @@
         Use `:rethrow :legacy` (default) to maintain the behaviour of version 0.7.0
         or earlier versions, which unfortunately was a mix of the two.
         Use `:return (fn [exception] (ex-info \"my custom exception\" {} exception))`
-        to return a new (or the same exception). This option provides the opportunity
+        to return a new (or the same) exception. This option provides the opportunity
         to conform the exception thrown to the caller.
 
      - `:failed? (fn [result] false)`
@@ -794,7 +794,7 @@
         Use `:rethrow :legacy` (default) to maintain the behaviour of version 0.7.0
         or earlier versions, which unfortunately was a mix of the two.
         Use `:return (fn [exception] (ex-info \"my custom exception\" {} exception))`
-        to return a new (or the same exception). This option provides the opportunity
+        to return a new (or the same) exception. This option provides the opportunity
         to conform the exception thrown to the caller.
 
      - `:failed? (fn [result] false)`
