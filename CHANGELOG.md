@@ -1,11 +1,12 @@
 # CHANGELOG
 
 ## Version 0.7.0-SNAPSHOT (unreleased)
+  * [NEW] Added `:rethrow` option to control which exception is thrown
+    to the caller.
+  * [NEW] Track logical failures (`:failed?`) with `:mulog/outcome :failed`
   * update dependencies
   * Add Clojure 1.12 as compilation target
   * [FIX #9] Use more intuitive exponential backoff
-  * Added `:rethrow` option to control which exception is thrown to
-    the caller.
 
 
 ## Version 0.7.0-alpha3 (2021-01-14)

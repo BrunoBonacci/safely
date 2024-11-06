@@ -321,6 +321,14 @@
     result))
 
 
+(defmacro ^:private default-on-error
+  "return the default value if the body throws an exception"
+  [default-value & body]
+  `(try
+     ~@body
+     (catch Exception _#
+       ~default-value)))
+
 
 (defmacro ^:private trace-direct-attempt
   [opts & body]
@@ -338,11 +346,18 @@
           (:tracking-tags opts#))
         :capture
         (fn [[r# err#]]
-          (if err#
+          (cond
+            err#
             {:mulog/outcome :error
              :exception err#}
+
+            (when-let [failed?# (:failed? opts#)]
+              (default-on-error nil (failed?# r#)))
+            {:mulog/outcome :failed :exception nil}
+
+            :else
             (when-let [cap# (:tracking-capture opts#)]
-              (cap# r#))))}
+              (default-on-error {:mulog/capture :error} (cap# r#)))))}
        ~@body)))
 
 
@@ -366,14 +381,16 @@
         :capture
         (fn [[r# err#]]
           (cond
+            (and (nil? err#) (when-let [failed?# (:failed? opts#)]
+                             (default-on-error nil (failed?# r#))))
+            {:mulog/outcome :failed :exception nil :safely/circuit-breaker-outcome :success}
+
             ;; if successful
             (nil? err#)
             (merge
               {:safely/circuit-breaker-outcome :success}
               (when-let [cap# (:tracking-capture opts#)]
-                (try (cap# r#)
-                     (catch Exception _#
-                       {:mulog/capture :error}))))
+                (default-on-error {:mulog/capture :error} (cap# r#))))
 
             ;; failed from circuit breaker
             (and (= ::circuit-breaker (:origin (ex-data err#)))
@@ -676,8 +693,8 @@
          (:tracking-tags opts'))
        :capture (:tracking-capture opts')}
 
-      (loop [{:keys [message default max-retries attempt track-as
-                     retryable-error? failed? rethrow] :as data} opts']
+      (loop [{:keys [default max-retries attempt
+                     retryable-error? failed?] :as data} opts']
         (let [[result ex] (make-attempt data f)]
           ;; check execution outcome,
           ;; if it is not an error or a failed result, then..

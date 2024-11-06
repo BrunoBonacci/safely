@@ -166,6 +166,55 @@
     (->> *result* (map :mulog/parent-trace) last) => nil
 
     )
+
+
+  (fact "failure and retries and success"
+    (def ^:dynamic *result*
+      (tp/with-test-publisher
+        (tp/ignore
+          (sleepless
+            (let [expr (crash-boom-bang!
+                         (constantly :failed)
+                         (constantly :failed)
+                         (constantly :success))]
+              (safely
+                (expr)
+                :on-error
+                :track-as :test
+                :log-stacktrace false
+                :failed? (partial = :failed)
+                :max-retries 3))))))
+
+    ;; 5 trace events, one outer, one first attempt (inner)
+    ;; plus 3 retries
+    (count *result*) => 4
+
+    ;; no breaker
+    (->> *result* (map :safely/circuit-breaker)) => [nil nil nil nil]
+
+    ;; checking attempts number
+    (->> *result* (map :safely/attempt)) => [0 1 2 nil]
+
+    ;; set of events fired
+    (->> *result* (map :safely/call-level)) => [:inner :inner :inner :outer]
+
+    ;; correct error state
+    (->> *result* (map :mulog/outcome)) => [:failed :failed :ok :ok]
+
+    ;; are all exceptions
+    (->> *result* (map :exception))
+    => (just [nil nil nil nil] )
+
+    ;; root-trace should be the same for all
+    (->> *result* (map :mulog/root-trace) set count) => 1
+
+    ;; parent-trace should be 3 same + nil (the root has no parent)
+    (->> *result* (map :mulog/parent-trace) set)
+    => (contains #{nil (partial instance? com.brunobonacci.mulog.core.Flake)})
+
+    (->> *result* (map :mulog/parent-trace) last) => nil
+
+    )
   )
 
 
@@ -281,7 +330,7 @@
 
 
 
-  (fact-with-test-pools "failure and retries and success"
+  (fact-with-test-pools "errors and retries and success"
     (def ^:dynamic *result*
       (tp/with-test-publisher
         (tp/ignore
@@ -317,6 +366,56 @@
     ;; are all exceptions
     (->> *result* (map :exception))
     => (just [exception? exception? nil nil] )
+
+    ;; root-trace should be the same for all
+    (->> *result* (map :mulog/root-trace) set count) => 1
+
+    ;; parent-trace should be 3 same + nil (the root has no parent)
+    (->> *result* (map :mulog/parent-trace) set)
+    => (contains #{nil (partial instance? com.brunobonacci.mulog.core.Flake)})
+
+    (->> *result* (map :mulog/parent-trace) last) => nil
+
+    )
+
+
+  (fact-with-test-pools "failure and retries and success"
+    (def ^:dynamic *result*
+      (tp/with-test-publisher
+        (tp/ignore
+          (sleepless
+            (let [expr (crash-boom-bang!
+                         (constantly :failed)
+                         (constantly :failed)
+                         (constantly :success))]
+              (safely
+                (expr)
+                :on-error
+                :track-as :test
+                :circuit-breaker :cb-test3b
+                :failed? (partial = :failed)
+                :log-stacktrace false
+                :max-retries 3))))))
+
+    ;; 5 trace events, one outer, one first attempt (inner)
+    ;; plus 3 retries
+    (count *result*) => 4
+
+    ;; circuit breaker
+    (->> *result* (map :safely/circuit-breaker)) => [:cb-test3b :cb-test3b :cb-test3b :cb-test3b]
+
+    ;; checking attempts number
+    (->> *result* (map :safely/attempt)) => [0 1 2 nil]
+
+    ;; set of events fired
+    (->> *result* (map :safely/call-level)) => [:inner :inner :inner :outer]
+
+    ;; correct error state
+    (->> *result* (map :mulog/outcome)) => [:failed :failed :ok :ok]
+
+    ;; are all exceptions
+    (->> *result* (map :exception))
+    => (just [nil nil nil nil] )
 
     ;; root-trace should be the same for all
     (->> *result* (map :mulog/root-trace) set count) => 1
