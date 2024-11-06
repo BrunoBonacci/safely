@@ -28,11 +28,17 @@
 (def ^{:const true :no-doc true} defaults
   {:attempt           0
    :default           ::undefined
+
    :message           "Trapped expected error during safe block execution."
    :log-errors        true
    :log-level         :warn
    :log-stacktrace    true
    :log-ns            "safely.log"
+   :log-inner-errors  nil
+   :log-inner-level   nil
+   :log-inner-stacktrace nil
+   :log-inner-ns      nil
+
    :max-retries       0
    :retry-delay       [:random-exp-backoff :base 300 :+/- 0.50 :max 60000]
    :retryable-error?  nil
@@ -108,7 +114,13 @@
     ;; if `:track-as` is provided then use it, otherwise use the `:call-site` if available
     (update $ :track-as (fn [t] (or t (:call-site $))))
     ;; if :max-retries is :forever, then retry as many times as you can
-    (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr))) ))
+    (update $ :max-retries (fn [mr] (if (= mr :forever) Long/MAX_VALUE mr)))
+    ;; if log-inner-* are not defined, default to log-* settings
+    (update $ :log-inner-errors     (fn [ov] (or ov (:log-errors $))))
+    (update $ :log-inner-level      (fn [ov] (or ov (:log-level $))))
+    (update $ :log-inner-stacktrace (fn [ov] (or ov (:log-stacktrace $))))
+    (update $ :log-inner-ns         (fn [ov] (or ov (:log-ns $))))
+    ))
 
 
 
@@ -261,15 +273,29 @@
 
 
 
+(defn- log-inner-error
+  [{:keys [log-inner-errors log-inner-ns log-inner-level
+           log-inner-stacktrace message call-site] :as opts} error]
+  (when (and error log-inner-errors)
+    (log/log log-inner-ns log-inner-level (when log-inner-stacktrace error)
+      (str message " @ [inner] " call-site ", reason: " (.getMessage ^Throwable error)))))
+
+
+
+(defn- log-outer-error
+  [{:keys [log-errors log-ns log-level log-stacktrace message call-site] :as opts} error]
+  (when (and error log-errors)
+    (log/log log-ns log-level (when log-stacktrace error)
+      (str message " @ " call-site ", reason: " (.getMessage ^Throwable error)))))
+
+
+
 (defn- make-attempt-direct
-  [{:keys [message log-ns log-errors log-level log-stacktrace call-site]}
-   f]
+  [opts f]
   (try
     [(f)]
     (catch Throwable x
-      (when log-errors
-        (log/log log-ns log-level (when log-stacktrace x)
-          (str message " @ " call-site ", reason: " (.getMessage ^Throwable x))))
+      (log-inner-error opts x)
       [nil x])))
 
 
@@ -306,7 +332,7 @@
 
 
 (defn- make-attempt-with-circuit-breaker
-  [{:keys [message log-ns log-errors log-level log-stacktrace call-site] :as opts} f]
+  [opts f]
   (let [ ;; transfer local-context to circuit-breaker thread
         ctx (u/local-context)
         f   (fn [] (u/with-context ctx (f)))
@@ -314,9 +340,8 @@
         [value error :as result] (->> (execute-with-circuit-breaker f opts)
                                    (normalize-failure opts))]
     ;; log error if required
-    (when (and error log-errors)
-      (log/log log-ns log-level (when log-stacktrace error)
-        (str message " @ " call-site ", reason: " (.getMessage ^Throwable error))))
+    (log-inner-error opts error)
+
     ;; return operation result
     result))
 
@@ -416,19 +441,34 @@
       (make-attempt-direct opts f))))
 
 
+(defn- clean-opts
+  [opts]
+  (select-keys opts
+    (concat
+      [:attempt :max-retries :retry-delay :tracking :track-as]
+      (when (:circuit-breaker opts)
+        [:circuit-breaker :thread-pool-size :queue-size :timeout :cancel-on-timeout]))))
+
+
 
 (defn- -rethrow!
   [default {:keys [rethrow message] :as opts} ^java.lang.Throwable exception]
   (cond
     (or (= rethrow :original)
       (and (= rethrow :legacy) (= default :original)))
-    (throw exception)
+    (do
+      (log-outer-error opts exception)
+      (throw exception))
 
     (or (= rethrow :wrapped) (and (= rethrow :legacy) (= default :wrapped)))
-    (throw (ex-info message opts exception))
+    (let [exception (ex-info message (clean-opts opts) exception)]
+      (log-outer-error opts exception)
+      (throw exception))
 
     (fn? rethrow)
-    (throw (rethrow exception))))
+    (let [exception (rethrow exception)]
+      (log-outer-error opts exception)
+      (throw exception))))
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -636,6 +676,17 @@
 
      - `:log-ns \"your.namespace\"` *(default `safely.log`)*
         To select the namespace logger. It defaults to the `safely.log`.
+
+     - It is possible to control the logging of the individual attempts
+       by setting the following options:
+       - `:log-inner-errors`
+       - `:log-inner-level`
+       - `:log-inner-stacktrace`
+       - `:log-inner-ns`
+      All the `:log-inner-*` if no value is provided, they default to the
+      value of the `:log-*` options. There are useful to reduce the log
+      noise on individual attempts.
+
 
    Tracking options:
 
@@ -936,6 +987,16 @@
 
      - `:log-ns \"your.namespace\"` (default `*ns*`)
         To select the namespace logger. It defaults to the current ns.
+
+     - It is possible to control the logging of the individual attempts
+       by setting the following options:
+       - `:log-inner-errors`
+       - `:log-inner-level`
+       - `:log-inner-stacktrace`
+       - `:log-inner-ns`
+      All the `:log-inner-*` if no value is provided, they default to the
+      value of the `:log-*` options. There are useful to reduce the log
+      noise on individual attempts.
 
 
    Tracking options:
