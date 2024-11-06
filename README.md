@@ -583,6 +583,35 @@ In this case we disable the error logging for the given block.
   :log-errors false)
 ```
 
+
+ It is possible to control the logging of the individual attempts
+ by setting the following options:
+   - `:log-inner-errors`
+   - `:log-inner-level`
+   - `:log-inner-stacktrace`
+   - `:log-inner-ns`
+
+All the `:log-inner-*` if no value is provided, they default to the
+value of the `:log-*` options. There are useful to reduce the log
+noise on individual attempts.
+
+For example:
+
+```Clojure
+;; Customize logging
+(safely
+  (http/get "http://user.service.local/users?active=true")
+  :on-error
+  :message "Error while fetching active users"
+  :max-retries 3
+  :log-level :error
+  :log-inner-level :debug)
+```
+
+Will log the errors individual attempts as `:debug` level, but
+should all the attempts up to the `:max-reties` be exhausted then
+the final error is logged as `:error` level.
+
 ### Automatic tracking (monitoring)
 
 If you have (and you should) a monitoring system which track application
