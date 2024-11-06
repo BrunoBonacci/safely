@@ -532,6 +532,8 @@
         execution and only when provided. If `:failed?` returns true, then the
         execution is considered failed, even though there is no exception,
         and it will follow the exceptional retry logic as normal.
+        NOTE: this function must be a pure function as it could be called
+        multiple times.
 
   Circuit breaker options:
 
@@ -830,6 +832,8 @@
         execution and only when provided. If `:failed?` returns true, then the
         execution is considered failed, even though there is no exception,
         and it will follow the exceptional retry logic as normal.
+        NOTE: this function must be a pure function as it could be called
+        multiple times.
 
   Circuit breaker options:
 
