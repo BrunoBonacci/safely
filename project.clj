@@ -1,4 +1,4 @@
-(defproject com.brunobonacci/safely "1.0.0"
+(defproject com.brunobonacci/safely "1.1.0-SNAPSHOT"
   :description "Safely is a Clojure's circuit-breaker library for handling retries in an elegant declarative way."
   :url "https://github.com/BrunoBonacci/safely"
 
