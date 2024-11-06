@@ -2,7 +2,7 @@
 
 ## Version 1.1.0-SNAPSHOT (unreleased)
 
-## Version 1.0.0-SNAPSHOT (2024-11-05)
+## Version 1.0.0 (2024-11-05)
   * [NEW] Added `:rethrow` option to control which exception is thrown
     to the caller.
   * [NEW] Track logical failures (`:failed?`) with `:mulog/outcome :failed`
