@@ -22,7 +22,7 @@ Add the dependency into your `project.clj`.
 
 ``` clojure
 ;; stable version
-[com.brunobonacci/safely "0.7.0-alpha3"]
+[com.brunobonacci/safely "1.0.0"]
 ```
 
   * Latest version: [![safely](https://img.shields.io/clojars/v/com.brunobonacci/safely.svg)](https://clojars.org/com.brunobonacci/safely)
