@@ -9,9 +9,9 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: linux-latest
-            name: linux
-            arch: x64
+          - os: macos-latest
+            name: macos
+            arch: aarch64
 
 
     permissions:
