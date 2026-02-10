@@ -1,0 +1,63 @@
+name: Clojure CI for cross-platform native images.
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ${{matrix.os}}
+    strategy:
+      matrix:
+        include:
+          - os: linux-latest
+            name: linux
+            arch: x64
+
+
+    permissions:
+      contents: read
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up GraalVM
+      uses: graalvm/setup-graalvm@v1.4.5
+      with:
+        java-version: '25'
+        distribution: 'graalvm-community'
+        native-image-job-reports: 'true'
+        github-token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install clojure tools
+      uses: DeLaGuardo/setup-clojure@13.5
+      with:
+        # Install just one or all simultaneously
+        # The value must indicate a particular version of the tool, or use 'latest'
+        # to always provision the latest version
+        cli: latest              # Clojure CLI based on tools.deps
+        lein: latest             # Leiningen
+        bb: latest               # Babashka
+        cljfmt: latest           # cljfmt
+
+
+    - name: Install dependencies
+      run: lein deps
+
+
+    - name: Build all
+      run: lein compile :all
+
+
+    - name: Run tests
+      run: lein test
+
+
+    - name: Build jar and/or uberjar
+      run: lein do clean, jar
+
+
+    - name: Archive binary
+      uses: actions/upload-artifact@v4
+      with:
+        name: safely-jars
+        path: target/safely*.jar
